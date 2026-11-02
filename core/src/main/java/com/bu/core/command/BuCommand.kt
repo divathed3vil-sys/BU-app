@@ -1,6 +1,7 @@
 package com.bu.core.command
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
@@ -32,5 +33,7 @@ private val json = Json { encodeDefaults = true }
 /** Serializes a command into its durable envelope payload. */
 fun BuCommand.payloadJson(): String = when (this) {
     is BuCommand.SaveCapture ->
-        json.encodeToString(SaveCapturePayload(text = text, captureSource = captureSource))
+        json.encodeToString(
+            SaveCapturePayload(text = text, captureSource = captureSource),
+        )
 }

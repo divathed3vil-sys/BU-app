@@ -16,7 +16,11 @@ data class DomainEvent(
     val schemaVersion: Int = SCHEMA_VERSION,
     val correlationId: String? = null,
     val idempotencyKey: String? = null,
-)
+) {
+    companion object {
+        const val SCHEMA_VERSION = 1
+    }
+}
 
 object EventTypes {
     const val COMMAND_RECEIVED = "COMMAND_RECEIVED"
