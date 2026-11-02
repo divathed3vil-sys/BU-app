@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.bu.designsystem.component.BuCard
 import com.bu.designsystem.component.BuDayArc
 import com.bu.designsystem.theme.BuLayerHigh
