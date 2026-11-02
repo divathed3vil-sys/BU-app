@@ -15,9 +15,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -42,9 +42,9 @@ import kotlin.math.roundToInt
  * button: the Pebble is the global capture surface; Sparks captures
  * directly as a spark. A drag only ever docks — it never fires capture.
  */
-private val PebbleOffsetSaver = listSaver<MutableState<Offset>, Float>(
-    save = { listOf(it.value.x, it.value.y) },
-    restore = { mutableStateOf(Offset(it[0], it[1])) },
+private val PebbleOffsetSaver = listSaver<Offset, Float>(
+    save = { listOf(it.x, it.y) },
+    restore = { Offset(it[0], it[1]) },
 )
 
 @Composable
@@ -146,10 +146,10 @@ fun BuPebble(
 }
 
 private fun maxOffsetX(container: IntSize, pebble: IntSize, margin: Int): Float =
-    (container.width - pebble.width - margin).coerceAtLeast(margin.toFloat())
+    (container.width - pebble.width - margin).coerceAtLeast(margin).toFloat()
 
 private fun maxOffsetY(container: IntSize, pebble: IntSize, margin: Int): Float =
-    (container.height - pebble.height - margin).coerceAtLeast(margin.toFloat())
+    (container.height - pebble.height - margin).coerceAtLeast(margin).toFloat()
 
 private fun docked(current: Offset, container: IntSize, pebble: IntSize, margin: Int): Offset {
     val maxX = maxOffsetX(container, pebble, margin)
