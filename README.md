@@ -33,6 +33,7 @@ tracks. Your words never leave the device.
 - **Track** — user-created only. BU ships zero tracks, ever.
 - **Big Three** — at most three things own a day.
 - **Carry** — cooling carry-over, never a red shame.
+- **Pebble** — the living `+`: draggable, docks with a bounce, expands into quick actions. It opens doors; it never duplicates.
 - **Momentum** — a 7-day rolling ratio. Streakless. Unbreakable.
 - **Dusk Close** — 90 seconds, evidence pre-filled, tomorrow drafted.
 - **Constellation** — your thoughts, grown into a graph.
@@ -56,6 +57,7 @@ Stack: Kotlin 2 · Compose M3 · Hilt · Room · minSdk 29 / target 35 · dark-o
 3. Haptics are a grammar: tap · tick · lock · win · warn.
 4. The user's own words are serif and untouchable. AI drafts; the user decides.
 5. Nothing pre-made. Setup builds *your* system from zero.
+6. The pebble is alive — 1:1 drags, spring docks, idle breathing. The sparks composer owns words; the pebble just opens doors.
 
 ## Build
 
@@ -71,7 +73,7 @@ and uploads it as the `BU-debug-apk` artifact.
 | phase | ships | artifact |
 |---|---|---|
 | **P0** ✅ | repo+CI, 5 modules, design system, onboarding + setup wizard, settings | debug APK |
-| **P1** | tracks, Day Arc, Big Three, blocks, sparks, plan-tomorrow | + unit tests |
+| **P1** ✅ | room data core, tracks, Day Arc, Big Three, blocks, sparks, plan-tomorrow, the pebble | + unit tests |
 | **P2** | Dusk Close, Dawn Push, Sunday Review, reminder engine, exam countdown | + tests |
 | **P3** | journal, threads, capture inbox, Constellation v1, momentum | + tests |
 | **P4** | guardian I: detection, app rules, overlay, emergency, focus | + tests |

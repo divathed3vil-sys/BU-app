@@ -14,8 +14,8 @@ android {
         applicationId = "com.bu.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-p0"
+        versionCode = 2
+        versionName = "0.2.0-p1"
     }
 
     buildTypes {
@@ -51,6 +51,7 @@ dependencies {
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material3)
     implementation(libs.compose.animation)

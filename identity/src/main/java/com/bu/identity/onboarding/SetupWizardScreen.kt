@@ -60,8 +60,12 @@ import com.bu.designsystem.theme.TrackColors
  * name → day boundaries → first track → ritual times → exam (optional) → done.
  * Six steps, each one question. Springs between steps, haptic on every answer.
  */
+
+/** The first track, created for real the moment the loop opens (P1 fix: P0 collected it but never saved it). */
+data class FirstTrack(val name: String, val colorToken: Int)
+
 @Composable
-fun SetupWizardScreen(onFinish: (BuSettings) -> Unit) {
+fun SetupWizardScreen(onFinish: (BuSettings, FirstTrack?) -> Unit) {
     val view = LocalView.current
     var step by remember { mutableStateOf(0) }
     var username by remember { mutableStateOf("") }
@@ -235,6 +239,7 @@ fun SetupWizardScreen(onFinish: (BuSettings) -> Unit) {
                                 examDateEpochDay = if (examName.isNotBlank()) BUTime.epochDayFor(examInDays.toLong()) else null,
                                 setupDone = true,
                             ),
+                            FirstTrack(name = trackName.trim(), colorToken = trackColor),
                         )
                     } else {
                         next()

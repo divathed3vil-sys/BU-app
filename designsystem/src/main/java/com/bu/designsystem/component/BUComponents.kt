@@ -97,17 +97,26 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = Ink
     Text(text = text, style = MaterialTheme.typography.labelSmall, color = color, modifier = modifier)
 }
 
-/** BU card: layer surface, hairline, 16dp radius. */
+/** BU card: layer surface, hairline, 16dp radius. Optionally answers the press. */
 @Composable
 fun BUCard(
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Layer)
             .border(1.dp, Line, RoundedCornerShape(16.dp))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = interaction, indication = null) { onClick() }
+                } else {
+                    Modifier
+                },
+            )
             .padding(16.dp),
     ) { content() }
 }

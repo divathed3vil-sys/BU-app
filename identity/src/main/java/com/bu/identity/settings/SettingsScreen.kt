@@ -147,7 +147,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) 
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "tracks, plans, journal and the guard live on their own screens —\nP1 and P4 land them.",
+            "the day arc, tracks and sparks live on their own screens —\nthe guardian wakes in P4.",
             style = MaterialTheme.typography.bodyMedium,
             color = InkFaint,
         )

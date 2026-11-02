@@ -20,8 +20,17 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.coroutines.android)
+
+    api(libs.room.runtime)
+    api(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
