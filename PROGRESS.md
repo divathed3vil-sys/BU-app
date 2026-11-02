@@ -4,7 +4,7 @@ Discipline: this file is updated after every phase. English-only. Commit format 
 
 ---
 
-## P0 — Scaffolding & proof  ·  2026-11-04  ·  status: PUSHED (CI pending owner download)
+## P0 — Scaffolding & proof  ·  2026-11-04  ·  status: CI GREEN · APK artifact live
 
 **Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
 
