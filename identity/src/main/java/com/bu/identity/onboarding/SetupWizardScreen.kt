@@ -236,7 +236,9 @@ fun SetupWizardScreen(onFinish: (BuSettings) -> Unit) {
                                 setupDone = true,
                             ),
                         )
-                    } else next(),
+                    } else {
+                        next()
+                    }
                 },
                 modifier = Modifier.width(150.dp),
             )
