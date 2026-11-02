@@ -189,7 +189,7 @@ fun SetupWizardScreen(onFinish: (BuSettings) -> Unit) {
                             label = "in days",
                             value = examInDays.toInt(),
                             range = 7f..365f,
-                            onChange = { examInDays = it },
+                            onChange = { examInDays = it.toFloat() },
                             format = { "$it days" },
                         )
                         Text(
