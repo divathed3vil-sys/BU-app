@@ -2,7 +2,6 @@ package com.bu.designsystem.motion
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 
 /**
@@ -16,7 +15,7 @@ import androidx.compose.animation.core.spring
 object BUMotion {
 
     // ---- springs (stiffness/damping ported from the approved mockup) ----
-    val Snappy = spring<Float>(dampingRatio = 0.86f, stiffness = 420f, visibilityThreshold = Spring.VisibilityThreshold.Float)
+    val Snappy = spring<Float>(dampingRatio = 0.86f, stiffness = 420f)
     val Bouncy = spring<Float>(dampingRatio = 0.58f, stiffness = 340f)
     val Bouncier = spring<Float>(dampingRatio = 0.52f, stiffness = 300f)
     val Screen = spring<Float>(dampingRatio = 0.80f, stiffness = 300f)
