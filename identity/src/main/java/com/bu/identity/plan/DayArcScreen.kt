@@ -168,6 +168,7 @@ fun DayArcScreen(
                         item = item,
                         track = item.trackId?.let { trackById[it] },
                         isToday = day == today,
+                        modifier = Modifier.animateItem(),
                         onOpen = { BUHaptic.tap(view); vm.openEdit(item) },
                         onState = { state -> BUHaptic.tick(view); vm.setState(item, state) },
                         onCarry = { BUHaptic.tick(view); vm.carry(item) },
@@ -197,6 +198,7 @@ fun DayArcScreen(
                         item = item,
                         track = item.trackId?.let { trackById[it] },
                         isToday = day == today,
+                        modifier = Modifier.animateItem(),
                         onOpen = { BUHaptic.tap(view); vm.openEdit(item) },
                         onState = { state -> BUHaptic.tick(view); vm.setState(item, state) },
                         onCarry = { BUHaptic.tick(view); vm.carry(item) },
@@ -213,6 +215,7 @@ fun DayArcScreen(
                         item = item,
                         track = item.trackId?.let { trackById[it] },
                         isToday = day == today,
+                        modifier = Modifier.animateItem(),
                         onOpen = { BUHaptic.tap(view); vm.openEdit(item) },
                         onState = { state -> BUHaptic.tick(view); vm.setState(item, state) },
                         onCarry = { BUHaptic.tick(view); vm.carry(item) },
@@ -244,6 +247,7 @@ private fun PlanCard(
     item: PlanItem,
     track: Track?,
     isToday: Boolean,
+    modifier: Modifier = Modifier,
     onOpen: () -> Unit,
     onState: (PlanState) -> Unit,
     onCarry: () -> Unit,
@@ -260,7 +264,7 @@ private fun PlanCard(
         InkLow
     }
 
-    BUCard(modifier = Modifier.fillMaxWidth().animateItem(), onClick = onOpen) {
+    BUCard(modifier = modifier.fillMaxWidth(), onClick = onOpen) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
