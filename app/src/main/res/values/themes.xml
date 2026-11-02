@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- BU is dark by doctrine. windowBackground = Bg0 kills the white cold-start flash. -->
     <style name="Theme.BU" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bu_bg0</item>
-        <item name="android:statusBarColor">@color/bu_bg0</item>
-        <item name="android:navigationBarColor">@color/bu_bg0</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/bu_background</item>
+        <item name="android:statusBarColor">@color/bu_background</item>
+        <item name="android:navigationBarColor">@color/bu_background</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

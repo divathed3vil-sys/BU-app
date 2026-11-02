@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: assembleDebug · lint
+    name: assembleDebug · test · lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,8 +27,8 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Unit tests
-        run: ./gradlew :core:testDebugUnitTest :identity:testDebugUnitTest --stacktrace
+      - name: Unit tests (kernel + pure domain)
+        run: ./gradlew :core:testDebugUnitTest :identity:test :guardian:test --stacktrace
 
       - name: Lint
         run: ./gradlew :app:lintDebug --stacktrace

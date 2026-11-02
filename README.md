@@ -1,82 +1,54 @@
-# BU
+# BU — Personal Life Operating System
 
-> one loop. your day, closed every night.
+**Local-first · offline · one user · Galaxy A54.** LOOM is the interface. The BU Temporal Kernel is the law. This repo is the single source of truth for research, plan, and code.
 
-**BU** is a single-user, offline-first Android life system — built for one person
-(Dhivakaran), on one device first (Galaxy A54). No cloud. No accounts. No pre-made
-tracks. Your words never leave the device.
+> **The plan is LOCKED** — see [`research/BU-v4-FINAL-PLAN-LOCKED.md`](research/BU-v4-FINAL-PLAN-LOCKED.md). All future work implements it; tweaks happen in the app, never in the plan.
 
-## The shape — two planes, one heart
+## The one law
+
+> AI may understand the request. The kernel decides what is valid. The ledger records what became true. The evidence system records why BU believes it. The projections make it useful.
+
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                          BU (one app)                         │
-│  ┌──────────── IDENTITY PLANE ─────────┐  ┌─── GUARDIAN ───┐ │
-│  │ capture · plan · journal · threads  │  │  detector      │ │
-│  │ rituals · reminders · constellation │◄─┤  restrictor    │ │
-│  │ momentum · needle 3 (on-device AI)  │  │  defender      │ │
-│  └──────────────────┬──────────────────┘  │  observer      │ │
-│            ┌────────▼─────────────────────▼──┐             │
-│            │   ONE DATA CORE (Room/SQLite)   │             │
-│            └─────────────────────────────────┘             │
-└──────────────────────────────────────────────────────────────┘
+:app            UI shells (LOOM: NOW·PLAN·JOURNAL·ATLAS·SHIELD), navigation, workers host
+:designsystem   tokens, motion v3 springs, haptics, Arc, Arc-Dial, Pebble   (leaf)
+:identity       BU Loop domain — pure Kotlin, zero Android imports
+:guardian       Shield domain — pure Kotlin, zero Android imports
+:core           BTK: command gateway · ledger (Room/SQLite) · events · outbox
 ```
 
-- **Identity plane** — the user's world. Plans, tracks, journal, graph, AI. Writes freely.
-- **Guardian plane** — the shield. Detection, blocking, observation. Reads config, writes evidence.
-- **One data core** — a single efficient SQLite file. 10 years < 50 MB.
+- **BTK flow:** command → idempotency → validate → transactional commit (state + events + outbox) → receipt → effects applied at-least-once after commit.
+- **Single-writer ledger:** SQLite owns all truth; Markdown bodies live in the ledger; FTS/embeddings/alarms/exports are rebuildable projections.
+- **Needle 3** (P6) is an interpreter with ≤5-tool contextual menus — confidence is never authorization.
 
-## The loop
+## Phases (owner tests an APK after each; CI artifact on every push)
 
-`CAPTURE → PLAN → DO → CLOSE → GROW`
+| Phase | Status | Contents |
+|---|---|---|
+| **P0** Scaffolding & proof | ✅ pushed | 5 modules · Hilt · kernel round-trip · LOOM shell · Arc + Arc-Dial + Pebble |
+| **P1** The Loop | pending | ledger schema v1 · tracks/Big Three/Blocks/Sparks · tally · capture→alarm→tally round-trip · focus |
+| P2 Rituals & reminders | pending | Dusk Close contract · Dawn Push · Care engine v3 |
+| P3 Memory & Atlas | pending | Markdown threads · evidence grades · FTS5 · links/graph · export |
+| P4 Guardian I | pending | UsageStats · Drift · Pull · budgets · L2 pause |
+| P5 Guardian II | pending | Slip Score · ladder 0–3 · guards · Adapter · Voice |
+| P6 Needle | pending | M0 telemetry-gate spike · extraction · embeddings · voice |
+| P7 Hardening | pending | Sunday Review · Reality Multiplier · backup/restore · perf gates |
 
-- **Track** — user-created only. BU ships zero tracks, ever.
-- **Big Three** — at most three things own a day.
-- **Carry** — cooling carry-over, never a red shame.
-- **Pebble** — the living `+`: draggable, docks with a bounce, expands into quick actions. It opens doors; it never duplicates.
-- **Momentum** — a 7-day rolling ratio. Streakless. Unbreakable.
-- **Dusk Close** — 90 seconds, evidence pre-filled, tomorrow drafted.
-- **Constellation** — your thoughts, grown into a graph.
+## Research library (`/research`)
 
-## Modules
-
-| module | owns |
-|---|---|
-| `:app` | screens, navigation, DI wiring |
-| `:core` | models, data core, time, settings |
-| `:designsystem` | near-black/mint theme, motion doctrine, haptic grammar |
-| `:identity` | plan, capture, journal, threads, graph, rituals, reminders, needle |
-| `:guardian` | all native services + enforcement + observation |
-
-Stack: Kotlin 2 · Compose M3 · Hilt · Room · minSdk 29 / target 35 · dark-only.
-
-## Doctrine (non-negotiable)
-
-1. Near-black base. Slight gray layering. Slight mint. **No red, ever.**
-2. Every press answers in <100 ms. Springs, not durations.
-3. Haptics are a grammar: tap · tick · lock · win · warn.
-4. The user's own words are serif and untouchable. AI drafts; the user decides.
-5. Nothing pre-made. Setup builds *your* system from zero.
-6. The pebble is alive — 1:1 drags, spring docks, idle breathing. The sparks composer owns words; the pebble just opens doors.
+- `BU-v4-FINAL-PLAN-LOCKED.md` — **the constitution**
+- `BU_2_Product_Strategy_and_LOOM_Report.md` — product strategy & LOOM spec
+- `BU_3_Final_Engineering_Architecture_Research.md` — BTK engineering research
+- `BU-2.0-Research-Blueprint-OWNER-CLAUDE.md` — owner's original Claude research
+- `BU-v2-research-part5/6/7` — zero-resistance UX · deep engineering · the blend
+- `BU-v1-BUILD-GUIDE-archive.md` — v1 archive
 
 ## Build
 
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug        # APK at app/build/outputs/apk/debug/
+./gradlew :core:testDebugUnitTest :identity:test :guardian:test
 ```
 
-CI (`.github/workflows/ci.yml`) builds a debug APK on every push to `main`
-and uploads it as the `BU-debug-apk` artifact.
-
-## Phase plan
-
-| phase | ships | artifact |
-|---|---|---|
-| **P0** ✅ | repo+CI, 5 modules, design system, onboarding + setup wizard, settings | debug APK |
-| **P1** ✅ | room data core, tracks, Day Arc, Big Three, blocks, sparks, plan-tomorrow, the pebble | + unit tests |
-| **P2** | Dusk Close, Dawn Push, Sunday Review, reminder engine, exam countdown | + tests |
-| **P3** | journal, threads, capture inbox, Constellation v1, momentum | + tests |
-| **P4** | guardian I: detection, app rules, overlay, emergency, focus | + tests |
-| **P5** | guardian II: batching, shorts budget, host block, widgets, VPN | + tests |
-| **P6** | needle 3: capture parse, evidence pre-fill, recaps, patterns | + tests |
-| **P7** | hardening: device admin, invincible, watchdog, backup, perf | release-candidate |
+CI builds a debug APK on every push to `main` — download it from the run's **Artifacts**.

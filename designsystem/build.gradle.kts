@@ -8,10 +8,7 @@ android {
     namespace = "com.bu.designsystem"
     compileSdk = 35
 
-    defaultConfig {
-        minSdk = 29
-        consumerProguardFiles("consumer-rules.pro")
-    }
+    defaultConfig { minSdk = 29 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -4,17 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import com.bu.app.navigation.BuNavGraph
-import com.bu.designsystem.theme.BUTheme
-import com.bu.designsystem.theme.Bg0
+import com.bu.app.navigation.BuRoot
+import com.bu.designsystem.theme.BuTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Single-activity shell. Everything is Compose; navigation is doctrine-simple.
+ * The single Activity. Everything else is Compose state over the ledger.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -22,14 +17,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BUTheme {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(Bg0),
-                ) {
-                    BuNavGraph()
-                }
+            BuTheme {
+                BuRoot()
             }
         }
     }

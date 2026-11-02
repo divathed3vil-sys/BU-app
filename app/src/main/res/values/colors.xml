@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bu_bg0">#060807</color>
-    <color name="bu_mint">#7CF0C0</color>
-    <color name="bu_launcher_bg">#060807</color>
+    <color name="bu_background">#FF0A0B0D</color>
+    <color name="ic_launcher_background">#FF0A0B0D</color>
 </resources>

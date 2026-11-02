@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The Day Arc: a mint ring segment over a quiet track ring -->
+    <path
+        android:pathData="M54,54 m-26,0 a26,26 0 1,1 52,0 a26,26 0 1,1 -52,0"
+        android:strokeWidth="5"
+        android:strokeColor="#2A2F34"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M54,54 m-26,0 a26,26 0 1,1 52,0"
+        android:strokeWidth="5"
+        android:strokeColor="#6FE3BD"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,81 a27,27 0 0,1 -26.2,-20.4"
+        android:strokeWidth="4"
+        android:strokeColor="#2FBF95"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,54 m-4,0 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0"
+        android:fillColor="#6FE3BD" />
+</vector>
