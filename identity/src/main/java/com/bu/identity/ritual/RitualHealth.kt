@@ -111,8 +111,8 @@ object RitualHealth {
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
         val days = ChronoUnit.DAYS.between(dueDate, today)
         return when {
-            days <= 0 -> null
-            days == 1 -> "waiting since yesterday"
+            days <= 0L -> null
+            days == 1L -> "waiting since yesterday"
             else -> "waiting $days days"
         }
     }
