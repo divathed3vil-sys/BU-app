@@ -1,5 +1,8 @@
 package com.bu.core.outbox
 
+import dagger.MapKey
+import javax.inject.Singleton
+
 /**
  * Dagger map key for outbox effect handlers — handlers register by effect type,
  * the processor looks them up by the same string the gateway enqueued.
