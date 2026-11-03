@@ -26,6 +26,9 @@ interface CommandInboxStore {
 interface EventStore {
     suspend fun append(event: DomainEvent)
     suspend fun findByCorrelation(commandId: String, type: String): DomainEvent?
+
+    /** Idempotency probe for once-per-day rituals (Dawn Push). */
+    suspend fun findByTypeAndAggregate(type: String, aggregateId: String): DomainEvent?
 }
 
 data class OutboxEffect(
@@ -89,6 +92,12 @@ interface TaskStore {
     suspend fun setSchedule(objectId: String, toDate: String, startMinute: Int?, movedCount: Int, atMs: Long)
     suspend fun overlappingBlock(dateIso: String, startMinute: Int, endMinute: Int): TaskRow?
     suspend fun insertCarry(row: CarryRow)
+
+    /** Triage: the task returns smaller — the estimate lands honestly. */
+    suspend fun setEstimate(objectId: String, minutes: Int, atMs: Long)
+
+    /** Triage: let go — soft kill, tombstone stays in the ledger (I10). */
+    suspend fun kill(objectId: String, atMs: Long)
 }
 
 interface ContractStore {

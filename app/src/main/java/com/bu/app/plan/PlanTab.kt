@@ -1,5 +1,11 @@
 package com.bu.app.plan
 
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,23 +35,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.bu.core.command.BuCommand
+import com.bu.core.command.BtkGateway
+import com.bu.core.command.CareTypes
 import com.bu.core.command.CommandGateway
 import com.bu.core.command.CommandReceipt
 import com.bu.core.command.CommandStatus
 import com.bu.core.ledger.ReminderRow
 import com.bu.core.ledger.TrackWithObject
 import com.bu.core.outbox.OutboxProcessor
+import com.bu.core.time.BuClock
 import com.bu.designsystem.component.BuArcDial
 import com.bu.designsystem.component.BuCard
 import com.bu.designsystem.theme.BuDanger
 import com.bu.designsystem.theme.BuMint
 import com.bu.designsystem.theme.BuTextDim
+import com.bu.identity.ritual.RitualHealth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -54,16 +65,19 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** PLAN — the temporal workspace: tracks (capacity) and care (reminders). */
+/** PLAN — the temporal workspace: tracks (capacity), care engine v3, alarm health. */
 @HiltViewModel
 class PlanViewModel @Inject constructor(
     private val gateway: CommandGateway,
     private val outboxProcessor: OutboxProcessor,
     trackDao: com.bu.core.ledger.TrackDao,
     reminderDao: com.bu.core.ledger.ReminderDao,
+    settingsDao: com.bu.core.ledger.SettingsDao,
+    private val clock: BuClock,
 ) : ViewModel() {
 
     val tracks: StateFlow<List<TrackWithObject>> = trackDao.observeTracksWithMeta()
@@ -71,6 +85,14 @@ class PlanViewModel @Inject constructor(
 
     val care: StateFlow<List<ReminderRow>> = reminderDao.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The interrupt budget — owner-adjustable, kernel-validated. */
+    val notifBudget: StateFlow<Int> = settingsDao.observeAll().map { rows ->
+        rows.firstOrNull { it.key == BtkGateway.SETTING_NOTIF_BUDGET }?.value?.toIntOrNull()
+            ?: RitualHealth.NotificationBudget.DEFAULT_BUDGET
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RitualHealth.NotificationBudget.DEFAULT_BUDGET)
+
+    fun nowMs(): Long = clock.nowMs()
 
     fun submit(command: BuCommand, onResult: (CommandReceipt) -> Unit = {}) {
         viewModelScope.launch {
@@ -85,10 +107,12 @@ class PlanViewModel @Inject constructor(
 fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val care by viewModel.care.collectAsStateWithLifecycle()
+    val budget by viewModel.notifBudget.collectAsStateWithLifecycle()
 
     var trackEditorOpen by remember { mutableStateOf(false) }
     var trackEditing by remember { mutableStateOf<TrackWithObject?>(null) }
     var careEditorOpen by remember { mutableStateOf(false) }
+    val nowMs = remember { viewModel.nowMs() }
 
     Column(
         modifier = Modifier
@@ -172,11 +196,15 @@ fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
                     care.forEach { reminder ->
                         CareRow(
                             reminder = reminder,
+                            nowMs = nowMs,
                             onDone = {
                                 viewModel.submit(BuCommand.CompleteReminder(reminder.reminderId))
                             },
                             onSnooze = {
                                 viewModel.submit(BuCommand.SnoozeReminder(reminder.reminderId, 10))
+                            },
+                            onCancel = {
+                                viewModel.submit(BuCommand.CancelReminder(reminder.reminderId))
                             },
                         )
                     }
@@ -184,8 +212,17 @@ fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
             }
         }
 
+        // ── Care engine v3 — alarm health and the interrupt budget ───────────
+        AlarmHealthCard()
+        InterruptBudgetCard(
+            budget = budget,
+            onBudget = { value ->
+                viewModel.submit(BuCommand.SetSetting(key = BtkGateway.SETTING_NOTIF_BUDGET, value = value.toString()))
+            },
+        )
+
         Text(
-            "Blocks live on NOW · the day timeline, capacity bar and Care types (anchor · contextual · relational · value · deadline · habit) arrive with the rituals in P2.",
+            "Blocks live on NOW · the day timeline and capacity bar land with the planner (P7).",
             style = MaterialTheme.typography.labelSmall,
             color = BuTextDim,
         )
@@ -219,9 +256,9 @@ fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
     if (careEditorOpen) {
         CareEditorSheet(
             onDismiss = { careEditorOpen = false },
-            onSave = { title, dueAtMs ->
+            onSave = { title, dueAtMs, careType ->
                 viewModel.submit(
-                    BuCommand.CreateReminder(title = title, dueAtMs = dueAtMs),
+                    BuCommand.CreateReminder(title = title, dueAtMs = dueAtMs, careType = careType),
                 ) { receipt ->
                     if (receipt.status == CommandStatus.COMMITTED) careEditorOpen = false
                 }
@@ -233,13 +270,23 @@ fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
 @Composable
 private fun CareRow(
     reminder: ReminderRow,
+    nowMs: Long,
     onDone: () -> Unit,
     onSnooze: () -> Unit,
+    onCancel: () -> Unit,
 ) {
+    val zone = ZoneId.systemDefault()
+    val why = RitualHealth.whyNow(reminder.careType, reminder.dueAtMs, zone, LocalDate.now(zone))
+    val waiting = RitualHealth.waitingLine(reminder.dueAtMs, nowMs, zone)
+
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(reminder.title, style = MaterialTheme.typography.bodyLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(reminder.title, style = MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.padding(start = 6.dp))
+                    CareTypeChip(reminder.careType)
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         formatDue(reminder.dueAtMs),
@@ -249,9 +296,102 @@ private fun CareRow(
                     Spacer(Modifier.padding(start = 8.dp))
                     AlarmHonestyChip(reminder.alarmExact)
                 }
+                // Why-now — the line that can never be absent (locked plan §2).
+                Text(
+                    why,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BuTextDim,
+                )
+                waiting?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = BuMint)
+                }
             }
             TextButton(onClick = onDone) { Text("✓") }
             TextButton(onClick = onSnooze) { Text("+10m") }
+            TextButton(onClick = onCancel) { Text("✕", color = BuDanger) }
+        }
+    }
+}
+
+/** The care item's type — quiet, informative, never a chore. */
+@Composable
+private fun CareTypeChip(careType: String?) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Text(
+            CareTypes.label(careType),
+            style = MaterialTheme.typography.labelSmall,
+            color = BuTextDim,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/**
+ * Exact-alarm health (locked plan §10, §13 P2): the card says plainly whether
+ * the OS grants exact alarms, with a one-tap deep link when it does not.
+ * A restricted alarm is never a failure — it degrades honestly.
+ */
+@Composable
+private fun AlarmHealthCard() {
+    val context = LocalContext.current
+    val canExact = remember {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            am.canScheduleExactAlarms()
+        } else {
+            true
+        }
+    }
+    BuCard(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Alarm health", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (canExact) {
+                        "Exact alarms allowed — care rings when it should."
+                    } else {
+                        "Exact alarms restricted — care arrives in a 10-minute window, honestly labelled."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (canExact) BuMint else BuTextDim,
+                )
+            }
+            if (!canExact && Build.VERSION.SDK_INT >= 31) {
+                TextButton(onClick = {
+                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    runCatching { context.startActivity(intent) }
+                }) { Text("Allow") }
+            }
+        }
+    }
+}
+
+/** The interrupt budget — care may ring N times a day; the rest waits quietly. */
+@Composable
+private fun InterruptBudgetCard(budget: Int, onBudget: (Int) -> Unit) {
+    BuCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Interrupt budget", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Care may interrupt $budget times a day. Anything beyond waits in the quiet digest — nothing is lost.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = BuTextDim,
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            items(listOf(3, 5, 8, 12)) { value ->
+                FilterChip(
+                    selected = budget == value,
+                    onClick = { onBudget(value) },
+                    label = { Text("$value/day") },
+                )
+            }
         }
     }
 }
@@ -379,17 +519,18 @@ private fun TrackEditorSheet(
     }
 }
 
-/** Care item: title + one dial decision. Exactness is the platform's honesty. */
+/** Care item: title, type, one dial decision. Exactness is the platform's honesty. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CareEditorSheet(
     onDismiss: () -> Unit,
-    onSave: (String, Long) -> Unit,
+    onSave: (String, Long, String) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var title by remember { mutableStateOf("") }
     var dayOffset by remember { mutableIntStateOf(0) }
     var minuteOfDay by remember { mutableIntStateOf(18 * 60) }
+    var careType by remember { mutableStateOf(CareTypes.CONTEXTUAL) }
     var error by remember { mutableStateOf<String?>(null) }
     val zone = ZoneId.systemDefault()
 
@@ -401,7 +542,7 @@ private fun CareEditorSheet(
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text("Care reminder", style = MaterialTheme.typography.headlineSmall)
+            Text("Care item", style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(
                 value = title,
                 onValueChange = {
@@ -412,6 +553,23 @@ private fun CareEditorSheet(
                 placeholder = { Text("What should BU hold for you?") },
                 singleLine = true,
             )
+            Text("Type", style = MaterialTheme.typography.titleSmall)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(CareTypes.ALL.toList()) { candidate ->
+                    FilterChip(
+                        selected = careType == candidate,
+                        onClick = { careType = candidate },
+                        label = { Text(CareTypes.label(candidate)) },
+                    )
+                }
+            }
+            if (CareTypes.isRecurring(careType)) {
+                Text(
+                    "Repeats daily — close one round and the next quietly arms itself.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BuMint,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = dayOffset == 0,
@@ -451,7 +609,7 @@ private fun CareEditorSheet(
                             .atZone(zone)
                             .toInstant()
                             .toEpochMilli()
-                        onSave(title.trim(), due)
+                        onSave(title.trim(), due, careType)
                     },
                 ) { Text("Set") }
             }

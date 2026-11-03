@@ -11,6 +11,10 @@ import kotlinx.serialization.json.Json
  * P1 vocabulary: capture → interpret/promote · tracks CRUD · tasks
  * (Big Three / Blocks / Sparks) · tallies (the Tally Trio) · care reminders ·
  * monotonic focus sessions · settings (day window, onboarding).
+ *
+ * P2 vocabulary: the rituals (Dusk Close seal, Dawn Push) · the triage escapes
+ * (Shrink / Kill — the moved-3 law's two honest exits) · care engine v3
+ * (typed care items) · owner settings (interrupt budget).
  */
 sealed interface BuCommand {
     /** Client-supplied key; retries with the same key never duplicate effects (I5). */
@@ -120,6 +124,7 @@ sealed interface BuCommand {
     data class CreateReminder(
         val title: String,
         val dueAtMs: Long,
+        val careType: String = CareTypes.CONTEXTUAL,
         override val source: CommandSource = CommandSource.USER_UI,
         override val idempotencyKey: String? = null,
     ) : BuCommand {
@@ -184,6 +189,75 @@ sealed interface BuCommand {
     ) : BuCommand {
         override val commandType: String = "MARK_ONBOARDED"
     }
+
+    // ── P2 · The rituals ─────────────────────────────────────────────────────
+
+    /**
+     * Dusk Close, step five — the seal (locked plan §2, §13 P2).
+     * One atomic contract: tomorrow's Big Three (auto-drafted from triage,
+     * editable to zero for a rest day) + Minimum Day + If-Then shield +
+     * Shield ceiling, sealed. The day being closed keeps its mood.
+     */
+    data class SealTomorrow(
+        val closeDateIso: String,
+        val targetDateIso: String,
+        val slots: List<BigThreeSlotInput>,
+        val minimumDay: String? = null,
+        val obstacle: String? = null,
+        val ifThenPlan: String? = null,
+        val ceilingRung: Int? = null,
+        val mood: Int? = null,
+        override val source: CommandSource = CommandSource.USER_UI,
+        override val idempotencyKey: String? = null,
+    ) : BuCommand {
+        override val commandType: String = "SEAL_TOMORROW"
+    }
+
+    /**
+     * Triage escape two — the task returns tomorrow, smaller. The estimate
+     * shrinks to what actually fits; the task carries with the shrink on record.
+     */
+    data class ShrinkTask(
+        val taskId: String,
+        val toDateIso: String,
+        val newEstimateMinutes: Int,
+        override val source: CommandSource = CommandSource.USER_UI,
+        override val idempotencyKey: String? = null,
+    ) : BuCommand {
+        override val commandType: String = "SHRINK_TASK"
+    }
+
+    /** Triage escape three — let it go. Soft delete, tombstone, zero guilt. */
+    data class KillTask(
+        val taskId: String,
+        override val source: CommandSource = CommandSource.USER_UI,
+        override val idempotencyKey: String? = null,
+    ) : BuCommand {
+        override val commandType: String = "KILL_TASK"
+    }
+
+    /**
+     * Dawn Push, recorded (locked plan §2). [firstMove] becomes today's
+     * first spark when present — the smallest piece of the Front.
+     */
+    data class RecordDawnPush(
+        val dateIso: String,
+        val firstMove: String? = null,
+        override val source: CommandSource = CommandSource.USER_UI,
+        override val idempotencyKey: String? = null,
+    ) : BuCommand {
+        override val commandType: String = "RECORD_DAWN_PUSH"
+    }
+
+    /** Owner-adjustable settings that the kernel knows about (whitelist-validated). */
+    data class SetSetting(
+        val key: String,
+        val value: String,
+        override val source: CommandSource = CommandSource.USER_UI,
+        override val idempotencyKey: String? = null,
+    ) : BuCommand {
+        override val commandType: String = "SET_SETTING"
+    }
 }
 
 @Serializable
@@ -239,7 +313,7 @@ data class TallyTaskPayload(val taskId: String, val tally: String, val toDateIso
 data class SetBigThreePayload(val dateIso: String, val slots: List<BigThreeSlotInput>)
 
 @Serializable
-data class CreateReminderPayload(val title: String, val dueAtMs: Long)
+data class CreateReminderPayload(val title: String, val dueAtMs: Long, val careType: String)
 
 @Serializable
 data class ReminderRefPayload(val reminderId: String)
@@ -258,6 +332,30 @@ data class SetDayWindowPayload(val startMinute: Int, val endMinute: Int)
 
 @Serializable
 data class MarkOnboardedPayload(val onboarded: Boolean)
+
+@Serializable
+data class SealTomorrowPayload(
+    val closeDateIso: String,
+    val targetDateIso: String,
+    val slots: List<BigThreeSlotInput>,
+    val minimumDay: String?,
+    val obstacle: String?,
+    val ifThenPlan: String?,
+    val ceilingRung: Int?,
+    val mood: Int?,
+)
+
+@Serializable
+data class ShrinkTaskPayload(val taskId: String, val toDateIso: String, val newEstimateMinutes: Int)
+
+@Serializable
+data class TaskRefPayload(val taskId: String)
+
+@Serializable
+data class RecordDawnPayload(val dateIso: String, val firstMove: String?)
+
+@Serializable
+data class SetSettingPayload(val key: String, val value: String)
 
 /** Outbox ticket for the interpreter — carries the capture id after commit. */
 @Serializable
@@ -304,7 +402,8 @@ fun BuCommand.payloadJson(): String = when (this) {
         )
     is BuCommand.TallyTask -> json.encodeToString(TallyTaskPayload(taskId, tally, toDateIso))
     is BuCommand.SetBigThree -> json.encodeToString(SetBigThreePayload(dateIso, slots))
-    is BuCommand.CreateReminder -> json.encodeToString(CreateReminderPayload(title, dueAtMs))
+    is BuCommand.CreateReminder ->
+        json.encodeToString(CreateReminderPayload(title, dueAtMs, careType))
     is BuCommand.CompleteReminder -> json.encodeToString(ReminderRefPayload(reminderId))
     is BuCommand.SnoozeReminder -> json.encodeToString(SnoozeReminderPayload(reminderId, minutes))
     is BuCommand.CancelReminder -> json.encodeToString(ReminderRefPayload(reminderId))
@@ -313,4 +412,45 @@ fun BuCommand.payloadJson(): String = when (this) {
         json.encodeToString(EndFocusPayload(sessionId, completedAsPlanned))
     is BuCommand.SetDayWindow -> json.encodeToString(SetDayWindowPayload(startMinute, endMinute))
     is BuCommand.MarkOnboarded -> json.encodeToString(MarkOnboardedPayload(true))
+    is BuCommand.SealTomorrow ->
+        json.encodeToString(
+            SealTomorrowPayload(
+                closeDateIso = closeDateIso,
+                targetDateIso = targetDateIso,
+                slots = slots,
+                minimumDay = minimumDay,
+                obstacle = obstacle,
+                ifThenPlan = ifThenPlan,
+                ceilingRung = ceilingRung,
+                mood = mood,
+            ),
+        )
+    is BuCommand.ShrinkTask ->
+        json.encodeToString(ShrinkTaskPayload(taskId, toDateIso, newEstimateMinutes))
+    is BuCommand.KillTask -> json.encodeToString(TaskRefPayload(taskId))
+    is BuCommand.RecordDawnPush -> json.encodeToString(RecordDawnPayload(dateIso, firstMove))
+    is BuCommand.SetSetting -> json.encodeToString(SetSettingPayload(key, value))
+}
+
+/** Care item types (locked plan §2 — Care Item). Recurring kinds re-arm on completion. */
+object CareTypes {
+    const val ANCHOR = "ANCHOR"         // daily rhythm (morning pages, evening close)
+    const val CONTEXTUAL = "CONTEXTUAL" // one-shot, relevant right now
+    const val RELATIONAL = "RELATIONAL" // someone who matters
+    const val VALUE = "VALUE"           // feeds what the owner values
+    const val DEADLINE = "DEADLINE"     // hard date, never negotiable
+    const val HABIT = "HABIT"           // daily repeat, no streak ever counted
+
+    val ALL = setOf(ANCHOR, CONTEXTUAL, RELATIONAL, VALUE, DEADLINE, HABIT)
+    val RECURRING = setOf(ANCHOR, HABIT)
+
+    fun isRecurring(careType: String?): Boolean = careType in RECURRING
+    fun label(careType: String?): String = when (careType) {
+        ANCHOR -> "anchor"
+        RELATIONAL -> "relational"
+        VALUE -> "value"
+        DEADLINE -> "deadline"
+        HABIT -> "habit"
+        else -> "contextual"
+    }
 }

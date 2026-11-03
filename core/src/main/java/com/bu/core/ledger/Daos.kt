@@ -32,6 +32,12 @@ interface EventDao {
     @Query("SELECT * FROM domain_events WHERE correlationId = :commandId AND type = :type LIMIT 1")
     suspend fun findByCorrelation(commandId: String, type: String): EventRow?
 
+    @Query("SELECT * FROM domain_events WHERE type = :type AND aggregateId = :aggregateId LIMIT 1")
+    suspend fun findByTypeAndAggregate(type: String, aggregateId: String): EventRow?
+
+    @Query("SELECT * FROM domain_events WHERE type = :type AND occurredAtMs >= :sinceMs ORDER BY occurredAtMs DESC LIMIT 100")
+    fun eventsSince(type: String, sinceMs: Long): Flow<List<EventRow>>
+
     @Query("SELECT COUNT(*) FROM domain_events WHERE type = 'CAPTURE_SAVED' AND occurredAtMs >= :sinceMs")
     fun captureCountSince(sinceMs: Long): Flow<Int>
 
@@ -207,6 +213,17 @@ interface TaskDao {
     fun observeBigThree(dateIso: String): Flow<List<TaskRow>>
 
     @Query(
+        "SELECT tasks.objectId AS objectId, objects.title AS title, tasks.taskClass AS taskClass, " +
+            "tasks.status AS status, tasks.scheduledDate AS scheduledDate, tasks.startMinute AS startMinute, " +
+            "tasks.endMinute AS endMinute, tasks.estimateMinutes AS estimateMinutes, " +
+            "tasks.movedCount AS movedCount, tasks.dueAtMs AS dueAtMs, tasks.createdAtMs AS createdAtMs " +
+            "FROM tasks INNER JOIN objects ON objects.objectId = tasks.objectId " +
+            "WHERE objects.deletedAtMs IS NULL AND tasks.scheduledDate = :dateIso " +
+            "AND tasks.status = 'OPEN' ORDER BY tasks.taskClass, tasks.createdAtMs",
+    )
+    fun observeOpenOnDate(dateIso: String): Flow<List<TaskWithTitle>>
+
+    @Query(
         "SELECT * FROM tasks WHERE taskClass = 'BLOCK' AND scheduledDate = :dateIso " +
             "AND status IN ('OPEN','DONE','PARTIAL') ORDER BY startMinute",
     )
@@ -259,6 +276,12 @@ interface TaskDao {
         movedCount: Int,
         atMs: Long,
     )
+
+    @Query("UPDATE tasks SET estimateMinutes = :minutes, updatedAtMs = :atMs WHERE objectId = :objectId")
+    suspend fun setEstimate(objectId: String, minutes: Int, atMs: Long)
+
+    @Query("UPDATE tasks SET status = 'KILLED', updatedAtMs = :atMs WHERE objectId = :objectId")
+    suspend fun kill(objectId: String, atMs: Long)
 
     @Query("SELECT COUNT(*) FROM tasks WHERE talliedDate = :dateIso AND status = 'DONE'")
     suspend fun countDoneOnDate(dateIso: String): Int
@@ -394,4 +417,7 @@ interface MomentumDao {
 interface NotificationLogDao {
     @Insert
     suspend fun insert(row: NotificationLogRow)
+
+    @Query("SELECT COUNT(*) FROM notification_log WHERE kind = :kind AND sentAtMs >= :sinceMs")
+    suspend fun countSince(kind: String, sinceMs: Long): Int
 }

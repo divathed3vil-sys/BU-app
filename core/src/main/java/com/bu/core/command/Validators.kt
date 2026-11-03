@@ -32,6 +32,12 @@ object Validators {
             if (command.sessionId.isBlank()) Verdict.Reject("UNKNOWN_FOCUS_SESSION") else Verdict.Commit()
         is BuCommand.SetDayWindow -> validateDayWindow(command)
         is BuCommand.MarkOnboarded -> Verdict.Commit()
+        is BuCommand.SealTomorrow -> validateSeal(command)
+        is BuCommand.ShrinkTask -> validateShrink(command)
+        is BuCommand.KillTask ->
+            if (command.taskId.isBlank()) Verdict.Reject("UNKNOWN_TASK") else Verdict.Commit()
+        is BuCommand.RecordDawnPush -> validateDawn(command)
+        is BuCommand.SetSetting -> validateSetting(command)
     }
 
     private fun refIsBlank(command: BuCommand): Verdict? {
@@ -147,6 +153,62 @@ object Validators {
             Verdict.Reject("WINDOW_TOO_SHORT")
         } else Verdict.Commit()
 
+    /**
+     * The sealed contract (locked plan §2): ≤3 slots, exactly one Main Front
+     * when any exist, and a rest day with zero slots is legal — kindness is
+     * also a plan. If-Then needs both halves or neither.
+     */
+    private fun validateSeal(command: BuCommand.SealTomorrow): Verdict {
+        if (command.closeDateIso.isBlank() || command.targetDateIso.isBlank()) {
+            return Verdict.Reject("SEAL_NEEDS_A_DAY")
+        }
+        if (command.slots.size > 3) return Verdict.Reject("MAX_THREE")
+        if (command.slots.isNotEmpty()) {
+            if (command.slots.count { it.isMainFront } != 1) {
+                return Verdict.Reject("EXACTLY_ONE_MAIN_FRONT")
+            }
+            if (command.slots.any { it.title.isBlank() || it.title.length > MAX_TITLE_LENGTH }) {
+                return Verdict.Reject("EMPTY_TITLE")
+            }
+            command.slots.forEach { slot ->
+                val start = slot.startMinute ?: return@forEach
+                if (start !in 0..(24 * 60 - 1) || start % 15 != 0) return Verdict.Reject("TIME_NOT_SNAPPED")
+            }
+        }
+        if ((command.minimumDay?.length ?: 0) > MAX_TITLE_LENGTH) return Verdict.Reject("TITLE_TOO_LONG")
+        val hasObstacle = !command.obstacle.isNullOrBlank()
+        val hasPlan = !command.ifThenPlan.isNullOrBlank()
+        if (hasObstacle != hasPlan) return Verdict.Reject("IF_THEN_NEEDS_BOTH")
+        command.ceilingRung?.let { if (it !in 0..5) return Verdict.Reject("RUNG_OUT_OF_RANGE") }
+        command.mood?.let { if (it !in 1..5) return Verdict.Reject("MOOD_OUT_OF_RANGE") }
+        return Verdict.Commit()
+    }
+
+    private fun validateShrink(command: BuCommand.ShrinkTask): Verdict =
+        if (command.taskId.isBlank()) Verdict.Reject("UNKNOWN_TASK")
+        else if (command.toDateIso.isNullOrBlank()) Verdict.Reject("CARRY_NEEDS_A_DATE")
+        else if (command.newEstimateMinutes !in MIN_ESTIMATE_MINUTES..MAX_TRACK_ESTIMATE_MINUTES) {
+            Verdict.Reject("ESTIMATE_OUT_OF_RANGE")
+        } else Verdict.Commit()
+
+    private fun validateDawn(command: BuCommand.RecordDawnPush): Verdict {
+        if (command.dateIso.isBlank()) return Verdict.Reject("DAWN_NEEDS_A_DAY")
+        command.firstMove?.let {
+            if (it.isBlank()) return Verdict.Reject("EMPTY_TITLE")
+            if (it.length > MAX_TITLE_LENGTH) return Verdict.Reject("TITLE_TOO_LONG")
+        }
+        return Verdict.Commit()
+    }
+
+    /** Settings the owner may write from the UI — everything else stays kernel-owned. */
+    private fun validateSetting(command: BuCommand.SetSetting): Verdict {
+        if (command.key !in SETTABLE_KEYS) return Verdict.Reject("UNKNOWN_SETTING")
+        if (command.key == KEY_NOTIF_BUDGET && command.value.toIntOrNull() !in MIN_NOTIF_BUDGET..MAX_NOTIF_BUDGET) {
+            return Verdict.Reject("BUDGET_OUT_OF_RANGE")
+        }
+        return Verdict.Commit()
+    }
+
     const val MAX_CAPTURE_LENGTH = 2000
     const val MAX_TITLE_LENGTH = 200
     const val MAX_NAME_LENGTH = 80
@@ -158,6 +220,12 @@ object Validators {
     const val MAX_SNOOZE_MINUTES = 240
     const val MAX_FOCUS_MINUTES = 240
     const val MIN_WINDOW_MINUTES = 240 // a day shorter than 4 h is not a day
+    const val CARRY_LIMIT = 3          // moved-3 law: the third carry is the last
+
+    const val KEY_NOTIF_BUDGET = "notif_budget"
+    const val MIN_NOTIF_BUDGET = 1
+    const val MAX_NOTIF_BUDGET = 20
+    val SETTABLE_KEYS = setOf(KEY_NOTIF_BUDGET)
 
     val TASK_CLASSES = setOf("BIG", "BLOCK", "SPARK", "EXAM")
     val TALLIES = setOf("DONE", "PARTIAL", "CARRIED")

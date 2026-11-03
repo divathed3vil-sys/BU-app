@@ -148,7 +148,6 @@ data class TaskRow(
     val updatedAtMs: Long,
 )
 
-/** One row per planned day — the Dusk Close contract grows into it in P2. */
 @Entity(tableName = "day_contracts")
 data class DayContractRow(
     @PrimaryKey val dateIso: String,
@@ -180,16 +179,21 @@ data class CarryRow(
  * Reminders: SQLite is canonical, alarms are a projection (locked plan §10).
  * [alarmRevision] orders PendingIntent updates; [alarmExact] is reported back
  * by the platform scheduler — null means "not scheduled yet".
+ *
+ * P2 — Care engine v3: [careType] is one of CareTypes (anchor · contextual ·
+ * relational · value · deadline · habit). Null on legacy P1 rows means
+ * CONTEXTUAL. Recurring kinds re-arm on completion inside the kernel.
  */
 @Entity(tableName = "reminders", indices = [Index("status"), Index("dueAtMs")])
 data class ReminderRow(
     @PrimaryKey val reminderId: String,
     val title: String,
     val dueAtMs: Long,
-    val kind: String, // CARE (types: anchor · contextual · relational · value · deadline · habit arrive P2)
+    val kind: String, // CARE
     val status: String, // PENDING · DUE · DONE · CANCELLED
     val alarmRevision: Int,
     val alarmExact: Boolean? = null,
+    val careType: String? = null,
     val createdAtMs: Long,
     val updatedAtMs: Long,
 )

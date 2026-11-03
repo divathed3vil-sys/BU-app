@@ -4,7 +4,87 @@ Discipline: this file is updated after every phase. English-only. Commit format 
 
 ---
 
-## P1 — The Loop (vertical slice)  ·  status: CI GREEN · APK artifact live · awaiting owner test
+## P2 — Rituals & reminders  ·  status: CI GREEN · APK artifact live · awaiting owner test
+
+**Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` — P2 per §13: Dusk Close contract ·
+Dawn Push · auto-draft tomorrow · carry cooldown + moved-3 rule · recommitment escalation ·
+Care engine v3.
+
+**Delivered**
+
+- **Dusk Close, the five-step contract (60–90 s by design):** Receipt (auto-filled
+  planned/landed/carried from the ledger + one-tap mood words) → Offload (one field, skippable,
+  captures straight into the kernel) → Triage (every open item gets one of the three honest
+  exits: **Tomorrow** / **Smaller** / **Let go** — commands fire the moment a decision lands) →
+  Commit (tomorrow's Big Three **auto-drafted from the triage results**, Minimum Day, If-Then
+  shield with the five obstacle classes, Shield ceiling) → Seal (one atomic `SealTomorrow`
+  command: contract + slots + mood land in a single transaction). After midnight the ritual
+  closes *yesterday* — the ledger decides, not the wall clock's vanity.
+- **Dawn Push, four beats ≤60 s:** Wins (yesterday's landed list, read from evidence, never
+  memory) → Front (the Main Front's title resolved from the ledger) → If-Then recall (the
+  shield sealed last night, shown once) → First move (optional text → today's first spark).
+  Recorded once per day — a second dawn commits as a no-op inside the kernel.
+- **The moved-3 law, enforced twice:** the kernel refuses the fourth carry
+  (`CARRY_LIMIT_REACHED`); the UI closes the carry lane at three moves — swipe-left stops
+  working, the → button disappears, and the row says "3 moves · do it, shrink it, or let it
+  go at dusk". Shrink and Kill stay open at the limit — they are the honest exits.
+- **Recommitment escalation (zero-guilt):** `RitualHealth.duskNudge` counts nights without a
+  close (GENTLE → CATCH_UP → RECOMMIT) and NOW surfaces the matching card; the word "missed"
+  appears nowhere; an empty ledger is day one, never a failure. No hidden escalation (I11) —
+  the ritual is always owner-started.
+- **Care engine v3:** six types (anchor · contextual · relational · value · deadline · habit);
+  **anchor and habit re-arm themselves** — completing one round inserts tomorrow's round and
+  re-arms the alarm in the same transaction; **Why-now lines** on every care row and every
+  care notification (the line that can never be absent); the **waiting chain** ("waiting since
+  yesterday / 3 days") surfaces calmly on items past their day; **interrupt budget**
+  (default 5/day, owner-adjustable through the kernel's whitelisted `SetSetting`) — overflow
+  lands in ONE quiet digest per day while the ledger keeps every item (budget bounds
+  interruptions, never knowledge); **exact-alarm health card** with a one-tap deep link when
+  the OS restricts exactness; per-item ✕ (cancel) on the Care list.
+- **Ledger v3 (additive):** `reminders.careType` (nullable — legacy P1 rows read as
+  contextual); hand-written `MIGRATION_2_3`; a P1 install keeps every care item (I1).
+
+**Kernel contract tests extended to P2:** the fourth carry is refused; shrink works at the
+limit (estimate lands, move recorded); kill is a soft tombstone with evidence and idempotent
+re-kill; the seal lands contract + slots + mood in one breath and a rest day (zero slots) is
+legal; if-then needs both halves; dawn records once per day and the first move becomes a
+spark; recurring care re-arms tomorrow while one-shot care does not; unknown settings keys are
+refused. `RitualHealthTest` pins the pure laws (moved-3, nudge levels, draft caps, why-now,
+waiting chain, budget decision, mood words).
+
+**Exit criteria check (locked plan §13 P2)**
+
+- [x] Dusk Close five-step contract ships end-to-end through the kernel (one command, one receipt).
+- [x] Dawn Push reads evidence, records once, seeds the first move.
+- [x] Carry cooldown + moved-3 rule + recommitment escalation live in the kernel, not the UI.
+- [x] Care v3: types, budget, digest, why-now, escalation chain, exact-alarm health.
+- [ ] **7 consecutive nights of the real loop on the owner's phone — this is the owner's part.**
+
+**Owner test checklist (download APK from the Actions run)**
+
+1. NOW → Rituals card → **Dawn Push**: win → front → shield → first move. Do it twice — the
+   second record changes nothing (the kernel refuses to double a morning).
+2. **Dusk Close**: see the auto receipt → tap a mood → offload one thought → triage an open
+   item three ways (Tomorrow / Smaller / Let go) → tomorrow's draft appears pre-filled → add
+   a Minimum Day + an If-Then shield → **Seal**. Check NOW tomorrow morning: the Front is set.
+3. **Moved-3 law**: create a task, carry it three days in a row (or tally-carry 3×) — on the
+   fourth try the swipe does nothing, the → is gone, and the row asks for a decision. At dusk,
+   Shrink it (10–45 min chips) — the smaller estimate lands in the ledger.
+4. **Care v3**: PLAN → New care item → pick **habit**, set it 2 minutes ahead → the ring names
+   its why-now → mark ✓ → a new pending item appears for tomorrow, same time, automatically.
+5. **Budget**: set 3/day → fire more than 3 care items in a day — item 4+ stays quiet, and one
+   "Care · waiting" digest appears; PLAN still lists every item.
+6. **Alarm health**: if the card says "restricted", tap Allow → return — the card turns mint.
+7. Miss a night on purpose: the next day NOW shows the gentle line; two nights, a kinder
+   stronger one. Never the word "missed".
+
+**Next phase:** P3 — Memory & Atlas (threads + Markdown-in-ledger · 3-tap check-ins ·
+evidence grades + provenance UI · FTS5 · wiki links + bounded graph · attachments · ghost
+stamps · promises · vault export/import v1 · energy tints), starts on owner approval.
+
+---
+
+## P1 — The Loop (vertical slice)  ·  status: OWNER APPROVED ✓ (floating nav amendment applied)
 
 **Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
 

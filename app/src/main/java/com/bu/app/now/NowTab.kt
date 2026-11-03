@@ -48,6 +48,7 @@ import com.bu.core.command.BtkGateway
 import com.bu.core.command.CommandGateway
 import com.bu.core.command.CommandReceipt
 import com.bu.core.command.CommandStatus
+import com.bu.core.event.EventTypes
 import com.bu.core.ledger.FocusSessionRow
 import com.bu.core.ledger.TaskWithTitle
 import com.bu.core.outbox.OutboxProcessor
@@ -61,6 +62,9 @@ import com.bu.designsystem.theme.BuMint
 import com.bu.designsystem.theme.BuMintDim
 import com.bu.designsystem.theme.BuTextDim
 import com.bu.identity.loop.Momentum
+import com.bu.identity.ritual.RitualHealth
+import com.bu.app.ritual.DawnPushFlow
+import com.bu.app.ritual.DuskCloseFlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.LocalDate
 import javax.inject.Inject
@@ -162,6 +166,34 @@ class NowViewModel @Inject constructor(
     val pendingEffects: StateFlow<Int> = outboxDao.pendingCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    // ── Rituals (P2) — read from the event log, never from memory ────────────
+
+    /** Contract dates sealed in the last month — the escalation evaluator's input. */
+    val sealedDates: StateFlow<Set<String>> = eventDao.eventsSince(
+        EventTypes.RITUAL_SEALED,
+        LocalDate.now().minusDays(31).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+    ).map { rows -> rows.map { it.aggregateId }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** A Dawn Push recorded today. */
+    val dawnDone: StateFlow<Boolean> = eventDao.eventsSince(
+        EventTypes.DAWN_PUSH_DONE,
+        LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(),
+    ).map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** A Dusk Close sealed tonight (after 20:00, or after midnight closing yesterday). */
+    val duskSealedTonight: StateFlow<Boolean> = eventDao.eventsSince(
+        EventTypes.RITUAL_SEALED,
+        run {
+            val zone = java.time.ZoneId.systemDefault()
+            val now = java.time.LocalTime.now(zone)
+            val day = if (now.hour < 4) LocalDate.now(zone).minusDays(1) else LocalDate.now(zone)
+            day.atTime(20, 0).atZone(zone).toInstant().toEpochMilli()
+        },
+    ).map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     // ── Commands — every change enters the kernel, then the outbox drains ────
 
     fun submit(command: BuCommand, onResult: (CommandReceipt) -> Unit = {}) {
@@ -185,10 +217,17 @@ fun NowTab(viewModel: NowViewModel = hiltViewModel()) {
     val focusSeconds by viewModel.focusElapsedSeconds.collectAsStateWithLifecycle()
     val captures by viewModel.capturesToday.collectAsStateWithLifecycle()
     val pending by viewModel.pendingEffects.collectAsStateWithLifecycle()
+    val sealedDates by viewModel.sealedDates.collectAsStateWithLifecycle()
+    val dawnDone by viewModel.dawnDone.collectAsStateWithLifecycle()
+    val duskSealed by viewModel.duskSealedTonight.collectAsStateWithLifecycle()
 
     var bigThreeEditorOpen by remember { mutableStateOf(false) }
     var blockEditorOpen by remember { mutableStateOf(false) }
     var captureOpen by remember { mutableStateOf(false) }
+    var duskOpen by remember { mutableStateOf(false) }
+    var dawnOpen by remember { mutableStateOf(false) }
+
+    val nudge = RitualHealth.duskNudge(viewModel.todayIso, sealedDates)
 
     Column(
         modifier = Modifier
@@ -201,6 +240,14 @@ fun NowTab(viewModel: NowViewModel = hiltViewModel()) {
         DayArcCard(
             windowMinutes = window,
             progress = tallyRatio(bigThree),
+        )
+
+        RitualsCard(
+            nudge = nudge,
+            dawnDone = dawnDone,
+            duskSealed = duskSealed,
+            onDawn = { dawnOpen = true },
+            onDusk = { duskOpen = true },
         )
 
         MomentumCard(momentum)
@@ -279,6 +326,78 @@ fun NowTab(viewModel: NowViewModel = hiltViewModel()) {
             onDismiss = { captureOpen = false },
             onSaved = { captureOpen = false },
         )
+    }
+
+    if (duskOpen) {
+        DuskCloseFlow(onDone = { duskOpen = false })
+    }
+
+    if (dawnOpen) {
+        DawnPushFlow(onDone = { dawnOpen = false })
+    }
+}
+
+/**
+ * The ritual card (P2): recommitment escalation on top when the ledger says
+ * so, then the two rituals with their honest done states. No streaks, no
+ * shame — the nudge copy comes from the zero-guilt law.
+ */
+@Composable
+private fun RitualsCard(
+    nudge: RitualHealth.Nudge,
+    dawnDone: Boolean,
+    duskSealed: Boolean,
+    onDawn: () -> Unit,
+    onDusk: () -> Unit,
+) {
+    BuCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Rituals", style = MaterialTheme.typography.titleMedium)
+        if (nudge != RitualHealth.Nudge.NONE) {
+            Text(
+                RitualHealth.nudgeCopy(nudge),
+                style = MaterialTheme.typography.bodyMedium,
+                color = BuMint,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 10.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Dawn Push", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "60 seconds · wins, front, first move",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BuTextDim,
+                )
+            }
+            if (dawnDone) {
+                Text("done ✓", style = MaterialTheme.typography.labelMedium, color = BuMint)
+            } else {
+                TextButton(onClick = onDawn) { Text("Push off") }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 6.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Dusk Close", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "90 seconds · decide tomorrow tonight",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BuTextDim,
+                )
+            }
+            if (duskSealed) {
+                Text("sealed ✓", style = MaterialTheme.typography.labelMedium, color = BuMint)
+            } else {
+                TextButton(onClick = onDusk) { Text("Close the day") }
+            }
+        }
     }
 }
 
@@ -465,10 +584,13 @@ private fun TallyRow(
     var dragX by remember(task.objectId) { mutableStateOf(0f) }
     val done = task.status == "DONE"
     val partial = task.status == "PARTIAL"
+    // The moved-3 law, visible where the decision happens (locked plan §2):
+    // the carry lane closes at three moves — Do, Shrink, or Kill remain.
+    val carryBlocked = RitualHealth.carryBlocked(task.movedCount)
 
     val bg = when {
         dragX > 40f -> BuMintDim
-        dragX < -40f -> BuCooling.copy(alpha = 0.35f)
+        dragX < -40f && !carryBlocked -> BuCooling.copy(alpha = 0.35f)
         else -> Color.Transparent
     }
 
@@ -486,7 +608,7 @@ private fun TallyRow(
                                 haptics.win()
                                 onTally(task.objectId, "DONE", null)
                             }
-                            dragX < -90f -> {
+                            dragX < -90f && !carryBlocked -> {
                                 haptics.tick()
                                 onTally(task.objectId, "CARRIED", tomorrowIso)
                             }
@@ -521,9 +643,13 @@ private fun TallyRow(
             }
             if (task.movedCount > 0 && !done) {
                 Text(
-                    "carried ${task.movedCount}× · cooling",
+                    if (carryBlocked) {
+                        "3 moves · do it, shrink it, or let it go at dusk"
+                    } else {
+                        "carried ${task.movedCount}× · cooling"
+                    },
                     style = MaterialTheme.typography.labelSmall,
-                    color = BuTextDim,
+                    color = if (carryBlocked) BuMint else BuTextDim,
                 )
             }
         }
@@ -538,10 +664,12 @@ private fun TallyRow(
                     haptics.tick()
                     onTally(task.objectId, "PARTIAL", null)
                 }) { Text("◐") }
-                TextButton(onClick = {
-                    haptics.tick()
-                    onTally(task.objectId, "CARRIED", tomorrowIso)
-                }) { Text("→") }
+                if (!carryBlocked) {
+                    TextButton(onClick = {
+                        haptics.tick()
+                        onTally(task.objectId, "CARRIED", tomorrowIso)
+                    }) { Text("→") }
+                }
             }
         } else {
             Text("landed", style = MaterialTheme.typography.labelSmall, color = BuMint)

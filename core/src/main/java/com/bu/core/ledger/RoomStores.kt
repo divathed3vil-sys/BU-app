@@ -50,6 +50,9 @@ class RoomEventStore @Inject constructor(private val dao: EventDao) : EventStore
 
     override suspend fun findByCorrelation(commandId: String, type: String): DomainEvent? =
         dao.findByCorrelation(commandId, type)?.toEvent()
+
+    override suspend fun findByTypeAndAggregate(type: String, aggregateId: String): DomainEvent? =
+        dao.findByTypeAndAggregate(type, aggregateId)?.toEvent()
 }
 
 @Singleton
@@ -122,6 +125,11 @@ class RoomTaskStore @Inject constructor(private val dao: TaskDao, private val ca
         dao.overlappingBlock(dateIso, startMinute, endMinute)
 
     override suspend fun insertCarry(row: CarryRow) = carryDao.insert(row)
+
+    override suspend fun setEstimate(objectId: String, minutes: Int, atMs: Long) =
+        dao.setEstimate(objectId, minutes, atMs)
+
+    override suspend fun kill(objectId: String, atMs: Long) = dao.kill(objectId, atMs)
 }
 
 @Singleton

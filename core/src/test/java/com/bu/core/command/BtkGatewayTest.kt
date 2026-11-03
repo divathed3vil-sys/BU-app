@@ -16,6 +16,7 @@ import com.bu.core.time.BuClock
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -66,6 +67,9 @@ class BtkGatewayTest {
 
         override suspend fun findByCorrelation(commandId: String, type: String): DomainEvent? =
             list.firstOrNull { it.correlationId == commandId && it.type == type }
+
+        override suspend fun findByTypeAndAggregate(type: String, aggregateId: String): DomainEvent? =
+            list.firstOrNull { it.type == type && it.aggregateId == aggregateId }
     }
 
     private class FakeOutbox : OutboxStore {
@@ -216,6 +220,18 @@ class BtkGatewayTest {
 
         override suspend fun insertCarry(row: CarryRow) {
             carries.add(row)
+        }
+
+        override suspend fun setEstimate(objectId: String, minutes: Int, atMs: Long) {
+            for (i in rows.indices) {
+                if (rows[i].objectId == objectId) rows[i] = rows[i].copy(estimateMinutes = minutes, updatedAtMs = atMs)
+            }
+        }
+
+        override suspend fun kill(objectId: String, atMs: Long) {
+            for (i in rows.indices) {
+                if (rows[i].objectId == objectId) rows[i] = rows[i].copy(status = "KILLED", updatedAtMs = atMs)
+            }
         }
     }
 
@@ -577,5 +593,223 @@ class BtkGatewayTest {
         assertEquals(CommandStatus.COMMITTED, ended.status)
         assertEquals("COMPLETED", focus.rows.single().state)
         assertEquals(25, focus.rows.single().actualMinutes)
+    }
+
+    // ── P2 — the moved-3 law, triage escapes, the seal, dawn, care v3 ─────────
+
+    private suspend fun seedTask(dateIso: String = "2026-11-04", key: String): String {
+        gateway.submit(BuCommand.CreateTask(title = "physics chapter 4", taskClass = "BIG", scheduledDateIso = dateIso, idempotencyKey = key))
+        return tasks.rows.single { it.status == "OPEN" }.objectId
+    }
+
+    @Test
+    fun `carrying three times is allowed - the fourth is refused by the kernel`() = runTest {
+        val taskId = seedTask(key = "m0")
+
+        gateway.submit(BuCommand.TallyTask(taskId, "CARRIED", "2026-11-05", idempotencyKey = "m1"))
+        gateway.submit(BuCommand.TallyTask(taskId, "CARRIED", "2026-11-06", idempotencyKey = "m2"))
+        val third = gateway.submit(BuCommand.TallyTask(taskId, "CARRIED", "2026-11-07", idempotencyKey = "m3"))
+        assertEquals(CommandStatus.COMMITTED, third.status)
+        assertEquals(3, tasks.rows.single().movedCount)
+
+        val fourth = gateway.submit(BuCommand.TallyTask(taskId, "CARRIED", "2026-11-08", idempotencyKey = "m4"))
+        assertEquals(CommandStatus.REJECTED, fourth.status)
+        assertEquals("CARRY_LIMIT_REACHED", fourth.reason)
+        // the refused carry changed nothing
+        assertEquals("2026-11-07", tasks.rows.single().scheduledDate)
+        assertEquals(3, tasks.carries.size)
+    }
+
+    @Test
+    fun `shrink works at the carry limit - it is one of the honest exits`() = runTest {
+        val taskId = seedTask(key = "s0")
+        repeat(3) { i ->
+            gateway.submit(
+                BuCommand.TallyTask(taskId, "CARRIED", "2026-11-0${5 + i}", idempotencyKey = "s${i + 1}"),
+            )
+        }
+
+        val receipt = gateway.submit(
+            BuCommand.ShrinkTask(taskId = taskId, toDateIso = "2026-11-08", newEstimateMinutes = 20, idempotencyKey = "s9"),
+        )
+
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        assertEquals("2026-11-08", tasks.rows.single().scheduledDate)
+        assertEquals(20, tasks.rows.single().estimateMinutes)
+        assertEquals(4, tasks.rows.single().movedCount)
+        assertEquals(1, events.list.count { it.type == "TASK_SHRUNK" })
+        assertTrue(evidence.rows.any { it.third.contains("Shrunk to 20 min") })
+    }
+
+    @Test
+    fun `kill lets go softly - tombstone, evidence, zero shaming`() = runTest {
+        val taskId = seedTask(key = "k0")
+
+        val receipt = gateway.submit(BuCommand.KillTask(taskId = taskId, idempotencyKey = "k1"))
+
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        assertEquals("KILLED", tasks.rows.single().status)
+        assertEquals(1, events.list.count { it.type == "TASK_KILLED" })
+        assertTrue(evidence.rows.any { it.third.contains("let this one go") })
+
+        // idempotent: killing a killed task commits as a no-op
+        val again = gateway.submit(BuCommand.KillTask(taskId = taskId, idempotencyKey = "k2"))
+        assertEquals(CommandStatus.COMMITTED, again.status)
+        assertEquals(1, events.list.count { it.type == "TASK_KILLED" })
+    }
+
+    @Test
+    fun `seal tomorrow lands the whole contract in one breath`() = runTest {
+        val receipt = gateway.submit(
+            BuCommand.SealTomorrow(
+                closeDateIso = "2026-11-04",
+                targetDateIso = "2026-11-05",
+                slots = listOf(
+                    BigThreeSlotInput("ACS revision", isMainFront = true),
+                    BigThreeSlotInput("gym"),
+                ),
+                minimumDay = "One page of revision",
+                obstacle = "phone",
+                ifThenPlan = "phone goes in the drawer at 9pm",
+                ceilingRung = 2,
+                mood = 4,
+                idempotencyKey = "seal1",
+            ),
+        )
+
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        // tomorrow's big three exists with exactly one front
+        val open = tasks.rows.filter { it.taskClass == "BIG" && it.status == "OPEN" }
+        assertEquals(2, open.size)
+        // the target contract is sealed with minimum day + if-then + ceiling
+        val target = contracts.rows.single { it.dateIso == "2026-11-05" }
+        assertNotNull(target.sealedAtMs)
+        assertEquals("One page of revision", target.minimumDay)
+        assertEquals(2, target.ceilingRung)
+        assertTrue(target.ifThenJson!!.contains("phone"))
+        // the closed day keeps its mood
+        assertEquals(4, contracts.rows.single { it.dateIso == "2026-11-04" }.mood)
+        assertEquals(1, events.list.count { it.type == "RITUAL_SEALED" })
+        assertTrue(evidence.rows.any { it.second == "USER_CONFIRMED" })
+    }
+
+    @Test
+    fun `a rest day seals with zero slots - kindness is also a plan`() = runTest {
+        val receipt = gateway.submit(
+            BuCommand.SealTomorrow(
+                closeDateIso = "2026-11-04",
+                targetDateIso = "2026-11-05",
+                slots = emptyList(),
+                mood = 3,
+                idempotencyKey = "rest1",
+            ),
+        )
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        assertEquals(0, tasks.rows.size)
+        assertNull(contracts.rows.single { it.dateIso == "2026-11-05" }.mainFrontTaskId)
+        assertNotNull(contracts.rows.single { it.dateIso == "2026-11-05" }.sealedAtMs)
+    }
+
+    @Test
+    fun `if-then needs both halves or neither`() = runTest {
+        val half = gateway.submit(
+            BuCommand.SealTomorrow(
+                closeDateIso = "2026-11-04",
+                targetDateIso = "2026-11-05",
+                slots = emptyList(),
+                obstacle = "fatigue",
+                idempotencyKey = "it1",
+            ),
+        )
+        assertEquals(CommandStatus.REJECTED, half.status)
+        assertEquals("IF_THEN_NEEDS_BOTH", half.reason)
+    }
+
+    @Test
+    fun `dawn push records once per day - the first move becomes a spark`() = runTest {
+        val first = gateway.submit(
+            BuCommand.RecordDawnPush(dateIso = "2026-11-04", firstMove = "open the ACS notes", idempotencyKey = "d1"),
+        )
+        assertEquals(CommandStatus.COMMITTED, first.status)
+        assertEquals(1, tasks.rows.size)
+        val spark = tasks.rows.single()
+        assertEquals("SPARK", spark.taskClass)
+        assertEquals("2026-11-04", spark.scheduledDate)
+        assertEquals(1, events.list.count { it.type == "DAWN_PUSH_DONE" })
+
+        // a second dawn the same day commits as a no-op — no duplicate spark
+        val second = gateway.submit(
+            BuCommand.RecordDawnPush(dateIso = "2026-11-04", firstMove = "another thing", idempotencyKey = "d2"),
+        )
+        assertEquals(CommandStatus.COMMITTED, second.status)
+        assertEquals(1, tasks.rows.size)
+        assertEquals(1, events.list.count { it.type == "DAWN_PUSH_DONE" })
+    }
+
+    @Test
+    fun `dawn push without a first move still records`() = runTest {
+        val receipt = gateway.submit(
+            BuCommand.RecordDawnPush(dateIso = "2026-11-04", firstMove = null, idempotencyKey = "d3"),
+        )
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        assertEquals(0, tasks.rows.size)
+        assertEquals(1, events.list.count { it.type == "DAWN_PUSH_DONE" })
+    }
+
+    @Test
+    fun `recurring care re-arms tomorrow on completion - one transaction`() = runTest {
+        gateway.submit(
+            BuCommand.CreateReminder(
+                title = "evening close",
+                dueAtMs = clock.ms + 1_000,
+                careType = com.bu.core.command.CareTypes.ANCHOR,
+                idempotencyKey = "rc1",
+            ),
+        )
+        val id = reminders.rows.single().reminderId
+
+        val receipt = gateway.submit(BuCommand.CompleteReminder(reminderId = id, idempotencyKey = "rc2"))
+
+        assertEquals(CommandStatus.COMMITTED, receipt.status)
+        assertEquals(2, reminders.rows.size)
+        val done = reminders.rows.first { it.reminderId == id }
+        val next = reminders.rows.first { it.reminderId != id }
+        assertEquals("DONE", done.status)
+        assertEquals("PENDING", next.status)
+        assertEquals(done.dueAtMs + 24 * 60 * 60_000L, next.dueAtMs)
+        assertEquals("ANCHOR", next.careType)
+        assertTrue(outbox.effects.any { it.effectType == EffectTypes.SCHEDULE_REMINDER_ALARM })
+        assertEquals(1, events.list.count { it.type == "REMINDER_RECURRED" })
+    }
+
+    @Test
+    fun `one-shot care does not recur`() = runTest {
+        gateway.submit(
+            BuCommand.CreateReminder(
+                title = "call the dentist",
+                dueAtMs = clock.ms + 1_000,
+                careType = com.bu.core.command.CareTypes.RELATIONAL,
+                idempotencyKey = "oc1",
+            ),
+        )
+        val id = reminders.rows.single().reminderId
+        gateway.submit(BuCommand.CompleteReminder(reminderId = id, idempotencyKey = "oc2"))
+
+        assertEquals(1, reminders.rows.size)
+        assertEquals(0, events.list.count { it.type == "REMINDER_RECURRED" })
+    }
+
+    @Test
+    fun `unknown setting keys are refused - the kernel owns its settings`() = runTest {
+        val bad = gateway.submit(BuCommand.SetSetting(key = "not_a_setting", value = "1", idempotencyKey = "ss0"))
+        assertEquals(CommandStatus.REJECTED, bad.status)
+        assertEquals("UNKNOWN_SETTING", bad.reason)
+
+        val outOfRange = gateway.submit(BuCommand.SetSetting(key = "notif_budget", value = "999", idempotencyKey = "ss1"))
+        assertEquals(CommandStatus.REJECTED, outOfRange.status)
+        assertEquals("BUDGET_OUT_OF_RANGE", outOfRange.reason)
+
+        val good = gateway.submit(BuCommand.SetSetting(key = "notif_budget", value = "3", idempotencyKey = "ss2"))
+        assertEquals(CommandStatus.COMMITTED, good.status)
     }
 }

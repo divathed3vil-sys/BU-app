@@ -13,6 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * v1 (P0): kernel spine — command_inbox · domain_events · outbox · capture_inbox.
  * v2 (P1): object plane + tasks/tracks/contracts/carry + reminders + focus +
  *          evidence + settings + momentum + notification_log.
+ * v3 (P2): reminders gain careType (Care engine v3) — additive, nullable.
  * Migrations are additive CREATE TABLE / ADD COLUMN only — a P0 install keeps
  * every capture it ever acknowledged (I1).
  */
@@ -36,7 +37,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MomentumRow::class,
         NotificationLogRow::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class BuDatabase : RoomDatabase() {
@@ -59,7 +60,7 @@ abstract class BuDatabase : RoomDatabase() {
     companion object {
         fun build(context: Context): BuDatabase =
             Room.databaseBuilder(context, BuDatabase::class.java, "bu-ledger.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
 
         /**
@@ -182,6 +183,13 @@ abstract class BuDatabase : RoomDatabase() {
 
                 // capture_inbox gains its promotion link — nullable ADD COLUMN, P0 rows untouched.
                 db.execSQL("ALTER TABLE `capture_inbox` ADD COLUMN `taskObjectId` TEXT")
+            }
+        }
+
+        /** P2 — Care engine v3: the care type rides on the reminder row. Legacy rows read as CONTEXTUAL. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `reminders` ADD COLUMN `careType` TEXT")
             }
         }
     }

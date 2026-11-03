@@ -26,9 +26,9 @@
 
 | Phase | Status | Contents |
 |---|---|---|
-| **P0** Scaffolding & proof | ✅ pushed | 5 modules · Hilt · kernel round-trip · LOOM shell · Arc + Arc-Dial + Pebble |
-| **P1** The Loop | pending | ledger schema v1 · tracks/Big Three/Blocks/Sparks · tally · capture→alarm→tally round-trip · focus |
-| P2 Rituals & reminders | pending | Dusk Close contract · Dawn Push · Care engine v3 |
+| **P0** Scaffolding & proof | ✅ owner-approved | 5 modules · Hilt · kernel round-trip · LOOM shell · Arc + Arc-Dial + Pebble |
+| **P1** The Loop | ✅ owner-approved | ledger schema v1 · tracks/Big Three/Blocks/Sparks · tally · capture→alarm→tally round-trip · focus · floating nav |
+| **P2** Rituals & reminders | pending owner test | Dusk Close contract · Dawn Push · auto-draft · moved-3 law · recommitment escalation · Care engine v3 |
 | P3 Memory & Atlas | pending | Markdown threads · evidence grades · FTS5 · links/graph · export |
 | P4 Guardian I | pending | UsageStats · Drift · Pull · budgets · L2 pause |
 | P5 Guardian II | pending | Slip Score · ladder 0–3 · guards · Adapter · Voice |

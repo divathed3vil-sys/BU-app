@@ -183,6 +183,11 @@ class BtkGateway @Inject constructor(
             is BuCommand.EndFocus -> commitEndFocus(command, envelope, now)
             is BuCommand.SetDayWindow -> commitDayWindow(command, envelope, now)
             is BuCommand.MarkOnboarded -> commitOnboarded(envelope, now)
+            is BuCommand.SealTomorrow -> commitSealTomorrow(command, envelope, now)
+            is BuCommand.ShrinkTask -> commitShrink(command, envelope, now)
+            is BuCommand.KillTask -> commitKill(command, envelope, now)
+            is BuCommand.RecordDawnPush -> commitDawnPush(command, envelope, now)
+            is BuCommand.SetSetting -> commitSetSetting(command, envelope, now)
         }
     }
 
@@ -433,6 +438,11 @@ class BtkGateway @Inject constructor(
             // Carry = cooldown deferral, never shame (locked plan §2). The task
             // simply lives on tomorrow's field with its move count remembered.
             "CARRIED" -> {
+                // The moved-3 law (locked plan §2): after three moves the
+                // cooldown closes — Do, Shrink, or Kill; the carry lane is done.
+                if (task.movedCount >= Validators.CARRY_LIMIT) {
+                    return rejectInCommit(envelope, "CARRY_LIMIT_REACHED", now)
+                }
                 val toDate = command.toDateIso!!
                 domain.tasks.insertCarry(
                     CarryRow(
@@ -512,6 +522,7 @@ class BtkGateway @Inject constructor(
                 title = command.title.trim(),
                 dueAtMs = command.dueAtMs,
                 kind = "CARE",
+                careType = command.careType,
                 status = if (overdue) "DUE" else "PENDING",
                 alarmRevision = 0,
                 createdAtMs = now,
@@ -520,7 +531,7 @@ class BtkGateway @Inject constructor(
         )
         domain.evidence.insert(
             reminderId, "REMINDER", "SCHEDULED",
-            "Care reminder set for ${command.dueAtMs}", now,
+            "Care item set for ${command.dueAtMs} · ${CareTypes.label(command.careType)}", now,
         )
         appendEvent(EventTypes.REMINDER_CREATED, reminderId, AggregateTypes.REMINDER, envelope, now)
         enqueueAlarm(reminderId, command.dueAtMs, now)
@@ -540,6 +551,30 @@ class BtkGateway @Inject constructor(
         domain.evidence.insert(reminder.reminderId, "REMINDER", "OUTCOME_CONFIRMED", "Owner closed this care item", now)
         enqueueCancelAlarm(reminder.reminderId, now)
         appendEvent(EventTypes.REMINDER_COMPLETED, reminder.reminderId, AggregateTypes.REMINDER, envelope, now)
+
+        // Care v3: recurring kinds re-arm themselves — the rhythm continues,
+        // quietly, same time tomorrow. One transaction, one truth (I4).
+        if (CareTypes.isRecurring(reminder.careType)) {
+            val nextId = newId()
+            val nextDue = reminder.dueAtMs + 24 * 60 * 60_000L
+            domain.reminders.insert(
+                ReminderRow(
+                    reminderId = nextId,
+                    title = reminder.title,
+                    dueAtMs = nextDue,
+                    kind = "CARE",
+                    careType = reminder.careType,
+                    status = "PENDING",
+                    alarmRevision = 0,
+                    createdAtMs = now,
+                    updatedAtMs = now,
+                ),
+            )
+            domain.evidence.insert(nextId, "REMINDER", "SCHEDULED", "Rhythm continues — next round tomorrow", now)
+            appendEvent(EventTypes.REMINDER_RECURRED, nextId, AggregateTypes.REMINDER, envelope, now)
+            enqueueAlarm(nextId, nextDue, now)
+        }
+
         enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, reminder.reminderId, envelope.payloadJson, now)
         inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
         return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
@@ -637,6 +672,171 @@ class BtkGateway @Inject constructor(
         domain.settings.set(SETTING_ONBOARDED, "1")
         appendEvent(EventTypes.SETTINGS_UPDATED, "onboarded", AggregateTypes.SETTINGS, envelope, now)
         enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, "onboarded", envelope.payloadJson, now)
+        inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+        return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+    }
+
+    // ── P2 — rituals, triage, care v3 ─────────────────────────────────────────
+
+    /**
+     * Dusk Close's seal: tomorrow's contract lands in one atomic breath —
+     * Big Three (or a legal rest day), Minimum Day, If-Then shield, ceiling.
+     * The day being closed keeps its mood on its own contract row.
+     */
+    private suspend fun commitSealTomorrow(command: BuCommand.SealTomorrow, envelope: CommandEnvelope, now: Long): CommandReceipt {
+        // The closed day keeps its mood (Receipt step).
+        val closedExisting = domain.contracts.byDate(command.closeDateIso)
+        domain.contracts.upsert(
+            DayContractRow(
+                dateIso = command.closeDateIso,
+                mainFrontTaskId = closedExisting?.mainFrontTaskId,
+                minimumDay = closedExisting?.minimumDay,
+                ifThenJson = closedExisting?.ifThenJson,
+                ceilingRung = closedExisting?.ceilingRung,
+                sealedAtMs = closedExisting?.sealedAtMs,
+                wakePlan = closedExisting?.wakePlan,
+                mood = command.mood ?: closedExisting?.mood,
+                updatedAtMs = now,
+            ),
+        )
+
+        // Tomorrow's Big Three — the draft replaced quietly, never shamed.
+        domain.tasks.replaceOpenBig(command.targetDateIso, now)
+        var mainFrontId: String? = null
+        command.slots.forEach { slot ->
+            val taskId = insertTaskObject(
+                title = slot.title.trim(),
+                taskClass = "BIG",
+                trackId = null,
+                scheduledDate = command.targetDateIso,
+                startMinute = slot.startMinute,
+                endMinute = null,
+                dueAtMs = null,
+                sourceCaptureId = null,
+                estimateMinutes = DEFAULT_BIG_ESTIMATE,
+                now = now,
+            )
+            if (slot.isMainFront && mainFrontId == null) mainFrontId = taskId
+        }
+
+        val ifThenJson = if (command.obstacle != null && command.ifThenPlan != null) {
+            Json.encodeToString(IfThen.serializer(), IfThen(command.obstacle, command.ifThenPlan))
+        } else {
+            null
+        }
+        domain.contracts.upsert(
+            DayContractRow(
+                dateIso = command.targetDateIso,
+                mainFrontTaskId = mainFrontId,
+                minimumDay = command.minimumDay?.trim()?.takeIf { it.isNotEmpty() },
+                ifThenJson = ifThenJson,
+                ceilingRung = command.ceilingRung,
+                sealedAtMs = now,
+                wakePlan = null,
+                mood = null,
+                updatedAtMs = now,
+            ),
+        )
+        domain.evidence.insert(
+            command.targetDateIso, "CONTRACT", "USER_CONFIRMED",
+            "Owner sealed the day at Dusk Close", now,
+        )
+        appendEvent(EventTypes.RITUAL_SEALED, command.targetDateIso, AggregateTypes.CONTRACT, envelope, now)
+        enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, command.targetDateIso, envelope.payloadJson, now)
+        enqueueWidgetRefresh(now)
+        inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+        return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+    }
+
+    /**
+     * Triage escape two: the task returns tomorrow, smaller. Even a task at
+     * the carry limit may shrink — shrinking is one of the honest exits.
+     */
+    private suspend fun commitShrink(command: BuCommand.ShrinkTask, envelope: CommandEnvelope, now: Long): CommandReceipt {
+        val task = domain.tasks.byId(command.taskId)
+            ?: return rejectInCommit(envelope, "UNKNOWN_TASK", now)
+        if (task.status !in TALLIABLE_STATUSES) {
+            return rejectInCommit(envelope, "TASK_NOT_TALLIABLE", now)
+        }
+        domain.tasks.setEstimate(task.objectId, command.newEstimateMinutes, now)
+        domain.tasks.insertCarry(
+            CarryRow(
+                carryId = newId(),
+                taskId = task.objectId,
+                fromDate = task.scheduledDate ?: command.toDateIso,
+                toDate = command.toDateIso,
+                movedAtMs = now,
+            ),
+        )
+        domain.tasks.setSchedule(task.objectId, command.toDateIso, task.startMinute, task.movedCount + 1, now)
+        domain.evidence.insert(
+            task.objectId, "TASK", "OBSERVED",
+            "Shrunk to ${command.newEstimateMinutes} min and moved to ${command.toDateIso}", now,
+        )
+        snapshotRevision(task.objectId, now)
+        appendEvent(EventTypes.TASK_SHRUNK, task.objectId, AggregateTypes.TASK, envelope, now)
+        domain.momentum.recountDay(task.scheduledDate ?: command.toDateIso)
+        enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, task.objectId, envelope.payloadJson, now)
+        enqueueWidgetRefresh(now)
+        inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+        return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+    }
+
+    /** Triage escape three: let go. Soft delete — the tombstone stays readable (I10). */
+    private suspend fun commitKill(command: BuCommand.KillTask, envelope: CommandEnvelope, now: Long): CommandReceipt {
+        val task = domain.tasks.byId(command.taskId)
+            ?: return rejectInCommit(envelope, "UNKNOWN_TASK", now)
+        if (task.status == "KILLED") {
+            inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+            return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+        }
+        domain.tasks.kill(task.objectId, now)
+        domain.objects.archive(task.objectId, now)
+        domain.evidence.insert(task.objectId, "TASK", "USER_CONFIRMED", "Owner let this one go", now)
+        appendEvent(EventTypes.TASK_KILLED, task.objectId, AggregateTypes.TASK, envelope, now)
+        domain.momentum.recountDay(task.scheduledDate ?: todayIsoFallback())
+        enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, task.objectId, envelope.payloadJson, now)
+        enqueueWidgetRefresh(now)
+        inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+        return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+    }
+
+    /**
+     * Dawn Push, recorded once per day. The first move becomes today's spark.
+     * A second dawn the same day commits as a no-op — mornings are not doubled.
+     */
+    private suspend fun commitDawnPush(command: BuCommand.RecordDawnPush, envelope: CommandEnvelope, now: Long): CommandReceipt {
+        val existing = events.findByTypeAndAggregate(EventTypes.DAWN_PUSH_DONE, command.dateIso)
+        if (existing != null) {
+            inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+            return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+        }
+        if (!command.firstMove.isNullOrBlank()) {
+            insertTaskObject(
+                title = command.firstMove.trim(),
+                taskClass = "SPARK",
+                trackId = null,
+                scheduledDate = command.dateIso,
+                startMinute = null,
+                endMinute = null,
+                dueAtMs = null,
+                sourceCaptureId = null,
+                estimateMinutes = DEFAULT_SPARK_ESTIMATE,
+                now = now,
+            )
+        }
+        domain.evidence.insert(command.dateIso, "CONTRACT", "OBSERVED", "Dawn Push recorded", now)
+        appendEvent(EventTypes.DAWN_PUSH_DONE, command.dateIso, AggregateTypes.CONTRACT, envelope, now)
+        enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, command.dateIso, envelope.payloadJson, now)
+        enqueueWidgetRefresh(now)
+        inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
+        return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
+    }
+
+    private suspend fun commitSetSetting(command: BuCommand.SetSetting, envelope: CommandEnvelope, now: Long): CommandReceipt {
+        domain.settings.set(command.key, command.value)
+        appendEvent(EventTypes.SETTINGS_UPDATED, command.key, AggregateTypes.SETTINGS, envelope, now)
+        enqueueEffect(EffectTypes.PROJECTIONS_DIRTY, command.key, envelope.payloadJson, now)
         inbox.updateStatus(envelope.commandId, CommandStatus.COMMITTED, null, clock.nowMs())
         return CommandReceipt(envelope.commandId, envelope.idempotencyKey, CommandStatus.COMMITTED)
     }
@@ -849,6 +1049,7 @@ class BtkGateway @Inject constructor(
         const val SETTING_DAY_START = "day_start_min"
         const val SETTING_DAY_END = "day_end_min"
         const val SETTING_ONBOARDED = "onboarded"
+        const val SETTING_NOTIF_BUDGET = "notif_budget"
         const val DEFAULT_ZONE = "Asia/Colombo"
         const val DEFAULT_SPARK_ESTIMATE = 15
         const val DEFAULT_BIG_ESTIMATE = 60
@@ -869,3 +1070,7 @@ data class Approval(val byActor: String, val atMs: Long, val note: String? = nul
 
 @kotlinx.serialization.Serializable
 private data class ObjectSnapshot(val title: String, val atMs: Long)
+
+/** The If-Then shield, serialised into day_contracts.ifThenJson (locked plan §2). */
+@kotlinx.serialization.Serializable
+data class IfThen(val obstacle: String, val plan: String)

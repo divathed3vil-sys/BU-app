@@ -29,6 +29,7 @@ object BuNotifications {
     const val CHANNEL_CARE = "bu_care"
     const val CHANNEL_SYSTEM = "bu_system"
     const val CARE_NOTIFICATION_ID_BASE = 20_000
+    const val DIGEST_NOTIFICATION_ID = 20_000 - 1
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -44,7 +45,7 @@ object BuNotifications {
             "Quiet status",
             NotificationManager.IMPORTANCE_MIN,
         ).apply {
-            description = "Background confirmations that never interrupt."
+            description = "Background confirmations and the quiet care digest. Never interrupts."
         }
         manager.createNotificationChannels(listOf(care, system))
     }
@@ -57,7 +58,11 @@ object BuNotifications {
             true
         }
 
-    fun careNotification(context: Context, reminderId: String, title: String): Notification {
+    /**
+     * The interruptive care notification. [whyNow] — the line that can never
+     * be absent (locked plan §2): every ring states why it is surfacing now.
+     */
+    fun careNotification(context: Context, reminderId: String, title: String, whyNow: String? = null): Notification {
         val open = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -70,11 +75,41 @@ object BuNotifications {
         return NotificationCompat.Builder(context, CHANNEL_CARE)
             .setSmallIcon(R.drawable.ic_bu_notify)
             .setContentTitle("Care · now")
-            .setContentText(title)
+            .setContentText(if (whyNow != null) "$title · $whyNow" else title)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(if (whyNow != null) "$title · $whyNow" else title),
+            )
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+    }
+
+    /**
+     * The quiet digest — budget overflow lands here (locked plan §9: "rest →
+     * digests"). Same channel as silent status; nothing is lost, the ledger
+     * keeps every item and PLAN shows them all.
+     */
+    fun digestNotification(context: Context, waiting: Int): Notification {
+        val open = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            DIGEST_NOTIFICATION_ID,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, CHANNEL_SYSTEM)
+            .setSmallIcon(R.drawable.ic_bu_notify)
+            .setContentTitle("Care · waiting")
+            .setContentText("$waiting care item${if (waiting == 1) "" else "s"} waiting in PLAN — no rush.")
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
             .build()
     }
 }

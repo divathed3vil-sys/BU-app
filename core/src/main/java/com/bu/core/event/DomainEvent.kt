@@ -40,6 +40,8 @@ object EventTypes {
     const val TASK_CREATED = "TASK_CREATED"
     const val TASK_TALLIED = "TASK_TALLIED"
     const val TASK_CARRIED = "TASK_CARRIED"
+    const val TASK_SHRUNK = "TASK_SHRUNK"
+    const val TASK_KILLED = "TASK_KILLED"
     const val BIG_THREE_SET = "BIG_THREE_SET"
 
     // Care (P1 round-trip)
@@ -48,6 +50,11 @@ object EventTypes {
     const val REMINDER_SNOOZED = "REMINDER_SNOOZED"
     const val REMINDER_CANCELLED = "REMINDER_CANCELLED"
     const val REMINDER_DUE = "REMINDER_DUE"
+    const val REMINDER_RECURRED = "REMINDER_RECURRED"
+
+    // Rituals (P2 — Dusk Close · Dawn Push)
+    const val RITUAL_SEALED = "RITUAL_SEALED"
+    const val DAWN_PUSH_DONE = "DAWN_PUSH_DONE"
 
     // Focus (P1 — monotonic clock)
     const val FOCUS_STARTED = "FOCUS_STARTED"

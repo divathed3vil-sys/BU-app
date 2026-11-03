@@ -66,3 +66,51 @@ works — I9: a missing permission degrades delivery, never the ledger). The gat
 ### Widget/AI/i18n note
 The interpreter is zone-locked to Asia/Colombo until settings expose travel zones (matches the
 kernel's `DEFAULT_ZONE`). Revisit with the Care engine in P2.
+
+---
+
+## P2 — Rituals & reminders
+
+### The seal is one command, not five
+Dusk Close *feels* like five steps but commits as exactly one `SealTomorrow` command: mood on
+the closing day's contract, Big Three + Minimum Day + If-Then + ceiling + `sealedAtMs` on
+tomorrow's. A crash mid-ritual leaves the ledger untouched, never half-sealed (I4). Triage
+decisions (carry/shrink/kill) are the exception — they fire immediately, so a triaged item is
+already moved in the ledger before the seal; the seal's draft simply remembers their titles.
+
+### Dusk belongs to the day being closed, not to the clock's date
+Run Dusk Close at 00:40 and it closes *yesterday* (before 4 am = yesterday). The receipt, the
+triage field, and the target date all derive from that; the ritual never lies about which day
+it sealed.
+
+### The rest day is legal
+`SealTomorrow` with zero slots commits happily — an empty Big Three is a plan too. The
+validator enforces "exactly one Front" only when lines exist. Kindness is encoded in the
+kernel, not just the copy.
+
+### The moved-3 law lives in the kernel and in the thumbs
+The kernel refuses the fourth carry (`CARRY_LIMIT_REACHED`) — but the UI also closes the lane
+early: no carry chip colour on drag, no → button, and the row names the three remaining exits.
+A law you can see is a law that gets obeyed. Shrink and Kill stay open at the limit; they are
+the point.
+
+### Why-now is a UI law and a notification law
+Every care row and every care notification carries its why-now line computed from the care
+type (pure `RitualHealth.whyNow`). The notification cannot exist without it — the receiver
+composes it, so the ring always answers "why now?" before the owner asks.
+
+### The budget bounds interruptions, never knowledge
+Budget overflow does not hide the item: it still lands DUE in the ledger, shows in PLAN with
+its waiting chain, and one quiet `DIGEST_QUIET` notification per day mentions the waiting
+count. `DIGEST_QUIET` rows in the notification log keep the digest at one per day even when
+five items overflow — the log is the dedupe memory, not a second truth.
+
+### Recurring care re-arms inside the committing transaction
+Completing an ANCHOR/HABIT item inserts tomorrow's round and enqueues its alarm in the same
+transaction that marks the old one DONE. A crash cannot strand a habit without its next
+round (I4/I5). One-shot types simply end — silence is their success.
+
+### Escalation with no teeth of its own
+`RitualHealth.duskNudge` only changes what NOW says. It cannot fire notifications, cannot
+raise the Shield, cannot nag (I11). The word "missed" is banned by a test — zero-guilt copy
+is enforced, not aspirational.
