@@ -4,7 +4,82 @@ Discipline: this file is updated after every phase. English-only. Commit format 
 
 ---
 
-## P0 — Scaffolding & proof  ·  2026-11-04  ·  status: CI GREEN · APK artifact live
+## P1 — The Loop (vertical slice)  ·  status: pushed · awaiting owner test
+
+**Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
+
+**Owner decision folded in first:** the LOOM nav is now a **floating pill** — detached from the
+screen edges, lifted by a soft shadow, content glides beneath it (Pebble, snackbar and every
+tab's scroll clearance re-tuned around it).
+
+**Delivered**
+
+- **Ledger schema v2 (all core P1 tables):** objects · object_revisions · relationships · tracks ·
+  tasks · day_contracts · carry_ledger · reminders · focus_sessions · evidence_events · settings ·
+  momentum_cache · notification_log. Additive hand-written `MIGRATION_1_2` — a P0 install keeps
+  every capture (I1), and capture rows gain their promotion link.
+- **BTK grew the P1 command vocabulary:** capture → interpret/promote · tracks CRUD · tasks
+  (BIG/BLOCK/SPARK) · TallyTask (DONE/PARTIAL/CARRIED) · SetBigThree (≤3, exactly one Main
+  Front, enforced in Validators) · care reminders (create/complete/snooze/cancel) · monotonic
+  focus (start/end, reboot ⇒ INTERRUPTED_OR_UNKNOWN, never invented) · day window · onboarded.
+  Every branch: validate → one transaction (state + events + outbox) → receipt → effects.
+- **Universal capture, two clocks (§5.5):** SaveCapture commits instantly; the outbox runs the
+  deterministic interpreter (`:core/interpret`) — relative times, clock times, tonight/tomorrow/
+  weekday anchors, intent-prefix stripping, honest ambiguity (unresolvable time ⇒ timeless task,
+  raw text never rewritten). Verdicts re-enter the kernel as commands; sparks that look like
+  tasks become SPARK tasks with a `derived_from` relationship.
+- **Care round-trip complete:** CreateReminder → outbox `SCHEDULE_REMINDER_ALARM` →
+  AndroidReminderScheduler (exact where the OS allows, honest 10-min window where it does not,
+  honesty written back to `alarmExact`) → CareReceiver marks DUE + logs delivery + posts the
+  notification → owner tallies in PLAN. Cancel/snooze re-arm idempotently. BootReceiver re-arms
+  from SQLite after a reboot; startup reconcile marks past-due honestly.
+- **The NOW widget:** home-screen projection (Main Front ▲, Big Three with ✓/◐/○ glyphs,
+  captures count) rebuilt from the ledger by the WIDGET_DIRTY outbox effect — never a second truth.
+- **NOW tab is the live cockpit:** real Day Arc (window from settings, elapsed vs landed progress) ·
+  Momentum headline (7-day rolling ratio from `momentum_cache`) · Big Three with **Tally Trio**
+  (swipe right = Done · swipe left = Carry with cooling-grey intent · buttons for the accessible
+  path; carried N× counts shown without shame) · Blocks strip + Arc-Dial block placement with
+  overlap refusal surfaced kindly · Sparks with direct capture + tally · Focus card (15/25/45/open,
+  live monotonic elapsed, Completed/End-early) · kernel pulse.
+- **PLAN tab:** Tracks CRUD (create/edit/archive; estimates are guesses BU will learn to correct)
+  + Care list (exact/inexact honesty chips, Done ✓, +10 m snooze).
+- **Onboarding, one decision per screen:** Begin → day window on two Arc-Dials (4 h floor,
+  enforced twice) → notification permission (ask once, explain, never block on a no) → ledger
+  marks onboarded. MainActivity gates on the ledger, splash-quiet while it reads.
+- **Kernel contract tests extended to P1 commands** (tally + evidence + momentum recount, carry
+  cooldown row + moved count, Big Three replacement + validator refusals, block overlap refusal,
+  care alarm enqueue, snooze math, focus exclusivity + honest end) alongside the P0 suite.
+
+**Exit criteria check (locked plan §13 P1)**
+
+- [x] Full loop on device: capture → interpret → plan (Big Three/blocks) → do (focus) → tally
+      — all through the kernel, all receipted.
+- [x] Process-death boundaries: captures, tasks, tallies, reminders, focus state all live in the
+      ledger; alarms re-arm on boot; outbox drains on start.
+- [x] NOW widget ships as a rebuildable projection.
+
+**Owner test checklist (download APK from the Actions run)**
+
+1. First launch: onboarding — drag the two Arc-Dials, set your day, decide on notifications.
+2. Tap the Pebble → type "call amma tomorrow at 6pm" → capture → watch NOW: a spark appears,
+   then becomes a task scheduled for tomorrow (the deterministic parser, no AI).
+3. NOW → "Set" on Big Three → three lines, mark the front → Commit. Swipe one right (Done —
+   mint), one left (Carry — cooling grey, "carried 1×" appears), use ◐ on one.
+4. "Add" a block on the Arc-Dial → try overlapping a second one on the same time — BU refuses,
+   kindly. Try 25/45/60/90 durations.
+5. PLAN → create a track; create a Care reminder for ~2 minutes ahead → wait for the
+   notification → tally it ✓ in PLAN. The row shows "exact" or "inexact window" honestly.
+6. Start a 25-min focus, watch the live timer, end it early — it records honestly.
+7. Add the "BU · NOW" widget to your home screen; tally something in-app and watch it repaint.
+8. Kill the app, reopen — everything you did is still there. Reboot the phone — reminders
+   survive.
+
+**Next phase:** P2 — Rituals & reminders (Dusk Close, Dawn Push, carry cooldown + moved-3 rule,
+Care engine v3), starts on owner approval.
+
+---
+
+## P0 — Scaffolding & proof  ·  2026-11-04  ·  status: APPROVED by owner
 
 **Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
 
@@ -17,18 +92,4 @@ Discipline: this file is updated after every phase. English-only. Commit format 
 - **LOOM shell:** 5 tabs (NOW · PLAN · JOURNAL · ATLAS · SHIELD) as a swipe pager with a leading spring indicator; capture sheet submits through the kernel and shows the receipt; NOW shows a live kernel pulse (captures today + queued async work) reading real ledger flows; PLAN hosts an interactive Arc-Dial demo; every future screen states its phase honestly.
 - CI: assembleDebug + kernel/domain unit tests + lint → debug APK artifact on every push.
 
-**Exit criteria check (locked plan §13 P0)**
-
-- [x] CI green + APK artifact
-- [x] 5 tabs swipe · Arc renders
-- [x] one demo command round-trips through kernel with event + receipt (Pebble → CaptureSheet → BTK → capture row + CAPTURE_SAVED event + 2 outbox effects → receipt toast)
-
-**Owner test checklist (download APK from the Actions run)**
-
-1. App installs and opens dark; five tabs swipe with the sliding mint indicator.
-2. Tap the Pebble (it drags, docks to an edge, and position is remembered) → Capture sheet → type → Capture → toast shows a receipt id.
-3. Kill the app, reopen: the NOW tab's "captures today" count survives — the capture survived process death.
-4. PLAN tab: drag the Arc-Dial — snaps in 15-minute steps with haptic ticks; ±5m buttons work.
-5. No red anywhere; carried/danger colours only where destructive.
-
-**Next phase:** P1 — The Loop (vertical slice), starts on owner approval.
+**Result:** owner tested on device — approved. One change request carried into P1: floating nav.

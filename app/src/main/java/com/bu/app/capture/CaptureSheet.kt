@@ -43,12 +43,12 @@ class CaptureViewModel @Inject constructor(
      * through the kernel instantly; interpretation is an outbox effect
      * applied after commit (deterministic parser in P1, Needle in P6).
      */
-    fun save(text: String, onResult: (CommandReceipt) -> Unit) {
+    fun save(text: String, captureSource: String, onResult: (CommandReceipt) -> Unit) {
         viewModelScope.launch {
             val receipt = gateway.submit(
                 BuCommand.SaveCapture(
                     text = text.trim(),
-                    captureSource = "PEBBLE",
+                    captureSource = captureSource,
                     idempotencyKey = UUID.randomUUID().toString(),
                 ),
             )
@@ -64,6 +64,7 @@ fun CaptureSheet(
     onDismiss: () -> Unit,
     onSaved: (String) -> Unit,
     viewModel: CaptureViewModel = hiltViewModel(),
+    captureSource: String = "PEBBLE",
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf("") }
@@ -112,7 +113,7 @@ fun CaptureSheet(
                     enabled = !saving && text.isNotBlank(),
                     onClick = {
                         saving = true
-                        viewModel.save(text) { receipt ->
+                        viewModel.save(text, captureSource) { receipt ->
                             saving = false
                             when (receipt.status) {
                                 CommandStatus.COMMITTED ->

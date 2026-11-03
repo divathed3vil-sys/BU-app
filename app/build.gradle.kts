@@ -14,8 +14,8 @@ android {
         applicationId = "com.bu.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.4.0-p0"
+        versionCode = 4
+        versionName = "0.5.0-p1"
     }
 
     buildTypes {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -58,6 +59,11 @@ import kotlin.math.roundToInt
  * BU root — the LOOM shell (locked plan §3):
  * 5 swipeable tabs with a leading indicator, the Pebble overlay,
  * the universal capture sheet, and honest per-phase empty states.
+ *
+ * The nav is a FLOATING pill (owner decision, P1): detached from the screen
+ * edges, lifted by a soft shadow, content glides beneath it. Every tab's
+ * scroll column carries its own bottom clearance; the overlays (Pebble,
+ * snackbar) sit above the pill, never behind it.
  */
 @Composable
 fun BuRoot() {
@@ -77,22 +83,32 @@ fun BuRoot() {
                 pagerState = pagerState,
                 modifier = Modifier.weight(1f),
             )
-            LoomBottomBar(pagerState = pagerState)
         }
+
+        // The floating LOOM nav — detached, lifted, alive.
+        LoomBottomBar(
+            pagerState = pagerState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
+        )
 
         // The Pebble — global capture, magnetic, position remembered.
         BuPebble(
             onTap = { captureOpen = true },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 84.dp),
+                .navigationBarsPadding()
+                .padding(bottom = 108.dp),
         )
 
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 96.dp),
+                .navigationBarsPadding()
+                .padding(bottom = 104.dp),
         )
     }
 
@@ -163,7 +179,10 @@ private fun LoomPager(
 }
 
 @Composable
-private fun LoomBottomBar(pagerState: PagerState) {
+private fun LoomBottomBar(
+    pagerState: PagerState,
+    modifier: Modifier = Modifier,
+) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
@@ -172,16 +191,16 @@ private fun LoomBottomBar(pagerState: PagerState) {
     val indicatorIndex = currentPage + pageOffset
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
+        modifier = modifier.fillMaxWidth(),
         color = BuLayer,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, BuOutline),
+        shadowElevation = 18.dp,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(64.dp),
         ) {
             // Leading indicator — slides under the active tab (motion v3: no flicker).
             val tabWidthPx = with(density) { 72.dp.toPx() }
@@ -194,7 +213,7 @@ private fun LoomBottomBar(pagerState: PagerState) {
                 modifier = Modifier
                     .offset { IntOffset(indicatorX.roundToInt(), 0) }
                     .align(Alignment.TopStart)
-                    .padding(top = 6.dp)
+                    .padding(top = 4.dp)
                     .width(56.dp)
                     .height(4.dp)
                     .background(BuMint, RoundedCornerShape(2.dp)),
