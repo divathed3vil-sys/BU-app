@@ -643,6 +643,13 @@ class BtkGateway @Inject constructor(
 
     // ── Task insertion shared by task-creating branches ──────────────────────
 
+    /** Seeds a task's estimate by class until real calibration arrives (P7). */
+    private fun defaultEstimate(taskClass: String): Int = when (taskClass) {
+        "SPARK" -> DEFAULT_SPARK_ESTIMATE
+        "EXAM" -> 120
+        else -> DEFAULT_BIG_ESTIMATE
+    }
+
     private suspend fun insertTaskObject(
         title: String,
         taskClass: String,

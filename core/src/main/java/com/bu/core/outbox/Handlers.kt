@@ -1,6 +1,8 @@
 package com.bu.core.outbox
 
+import com.bu.core.command.OutboxEffect
 import dagger.MapKey
+import javax.inject.Inject
 import javax.inject.Singleton
 
 /**

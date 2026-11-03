@@ -109,7 +109,9 @@ interface FocusStore {
     suspend fun insert(row: FocusSessionRow)
     suspend fun byId(sessionId: String): FocusSessionRow?
     suspend fun running(): FocusSessionRow?
-    suspend fun end(sessionId: String, state: String, endedAtMs: Long, actualMinutes: Int?)
+
+    /** Returns 1 when a RUNNING row moved, 0 when nothing was running. */
+    suspend fun end(sessionId: String, state: String, endedAtMs: Long, actualMinutes: Int?): Int
 }
 
 interface SettingsStore {
@@ -128,9 +130,10 @@ interface MomentumStore {
 /**
  * The domain stores, bundled — one constructor seam for the gateway, one fake
  * for JVM tests. Each store stays a pure interface (I2: single authority per
- * field; the gateway is the only writer).
+ * field; the gateway is the only writer). Open only so the Room bundle can
+ * subclass it for DI; no behaviour is overridden.
  */
-class DomainStores(
+open class DomainStores(
     val objects: ObjectStore,
     val tracks: TrackStore,
     val tasks: TaskStore,
