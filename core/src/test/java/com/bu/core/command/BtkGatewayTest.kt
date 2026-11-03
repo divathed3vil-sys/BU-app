@@ -493,7 +493,8 @@ class BtkGatewayTest {
         assertEquals(1, tasks.rows.count { it.status == "REPLACED" })
         assertEquals(1, contracts.rows.size)
         assertNotNull(contracts.rows.single().mainFrontTaskId)
-        assertEquals(1, events.list.count { it.type == "BIG_THREE_SET" })
+        // both commits (the replaced set and the new set) emitted the event
+        assertEquals(2, events.list.count { it.type == "BIG_THREE_SET" })
     }
 
     @Test
