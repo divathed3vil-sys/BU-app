@@ -4,7 +4,7 @@ Discipline: this file is updated after every phase. English-only. Commit format 
 
 ---
 
-## P1 — The Loop (vertical slice)  ·  status: pushed · awaiting owner test
+## P1 — The Loop (vertical slice)  ·  status: CI GREEN · APK artifact live · awaiting owner test
 
 **Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
 
