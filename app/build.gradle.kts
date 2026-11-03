@@ -64,4 +64,5 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 }

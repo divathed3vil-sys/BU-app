@@ -3,23 +3,17 @@ package com.bu.app.platform
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.bu.core.command.CommandGateway
 import com.bu.core.command.ReminderStore
-import com.bu.core.event.EffectTypes
-import com.bu.core.command.OutboxEffect
-import com.bu.core.event.EventTypes
-import com.bu.core.event.AggregateTypes
-import com.bu.core.event.DomainEvent
-import com.bu.core.ledger.NotificationLogRow
 import com.bu.core.ledger.NotificationLogDao
+import com.bu.core.ledger.NotificationLogRow
 import com.bu.core.outbox.OutboxProcessor
 import com.bu.core.time.BuClock
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
  * Fires when a care alarm rings (the platform reporting, never deciding):
@@ -39,7 +33,7 @@ class CareReceiver : BroadcastReceiver() {
         val result = goAsync()
         val appContext = context.applicationContext
 
-        CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val now = clock.nowMs()
                 val reminder = reminderStore.byId(reminderId)
@@ -70,12 +64,8 @@ class CareReceiver : BroadcastReceiver() {
         }
     }
 
-    private companion object {
-        const val TAG = "BuCare"
-        const val UNUSED = 0 // keep runBlocking import referenced if lints demand
-    }
-
     companion object {
+        private const val TAG = "BuCare"
         const val ACTION_CARE_DUE = "com.bu.app.action.CARE_DUE"
         const val EXTRA_REMINDER_ID = "reminder_id"
     }

@@ -495,7 +495,7 @@ private fun TallyRow(
                     },
                 ) { change, dragAmount ->
                     change.consume()
-                    dragX = (dragX + dragAmount.x).coerceIn(-140f, 140f)
+                    dragX = (dragX + dragAmount).coerceIn(-140f, 140f)
                 }
             }
             .graphicsLayer { translationX = dragX }

@@ -202,7 +202,7 @@ fun PlanTab(viewModel: PlanViewModel = hiltViewModel()) {
                 } else {
                     BuCommand.CreateTrack(name = name, estimateMinutes = estimate)
                 }
-                viewModel.submit(command) { onReceipt(receipt) }
+                viewModel.submit(command) { receipt -> onReceipt(receipt) }
             },
             onArchive = if (trackEditing == null) {
                 null
