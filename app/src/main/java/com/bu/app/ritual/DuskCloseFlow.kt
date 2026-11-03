@@ -388,7 +388,7 @@ private fun ReceiptStep(
         }
 
         Spacer(Modifier.weight(1f))
-        DuskPrimaryButton("Continue", onNext)
+        DuskPrimaryButton("Continue", onClick = onNext)
     }
 }
 
@@ -635,7 +635,11 @@ private fun CommitStep(
 
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.weight(1f))
-        DuskPrimaryButton(if (sealing) "Sealing…" else "Seal the day", onSeal, enabled = !sealing)
+        DuskPrimaryButton(
+            label = if (sealing) "Sealing…" else "Seal the day",
+            enabled = !sealing,
+            onClick = onSeal,
+        )
     }
 }
 
@@ -664,7 +668,7 @@ private fun SealedStep(targetDate: String, onDone: () -> Unit) {
 
 /** The one big button per screen — the ritual's only affordance. */
 @Composable
-private fun DuskPrimaryButton(label: String, onClick: () -> Unit, enabled: Boolean = true) {
+private fun DuskPrimaryButton(label: String, enabled: Boolean = true, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         enabled = enabled,
