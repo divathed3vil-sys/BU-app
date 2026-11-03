@@ -1,14 +1,14 @@
 package com.bu.core.outbox
 
-import javax.inject.Qualifier
-
 /**
  * Dagger map key for outbox effect handlers — handlers register by effect type,
  * the processor looks them up by the same string the gateway enqueued.
+ *
+ * NOTE: deliberately NOT a @Qualifier. A Dagger map key and a qualifier are
+ * different instruments; combining them makes the key invisible to @IntoMap.
  */
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
 @MapKey
+@Retention(AnnotationRetention.RUNTIME)
 annotation class EffectKey(val value: String)
 
 /**
