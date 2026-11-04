@@ -1,54 +1,99 @@
-# BU — Personal Life Operating System
+# BU — The Fire
 
-**Local-first · offline · one user · Galaxy A54.** LOOM is the interface. The BU Temporal Kernel is the law. This repo is the single source of truth for research, plan, and code.
+> A discipline-first life operating system. It watches, it remembers, it speaks the truth. The fire is alive — keep it lit.
 
-> **The plan is LOCKED** — see [`research/BU-v4-FINAL-PLAN-LOCKED.md`](research/BU-v4-FINAL-PLAN-LOCKED.md). All future work implements it; tweaks happen in the app, never in the plan.
+**Status:** v6 vision locked. P0 Spark not yet started.
+**Owner:** Dhivakaran · Galaxy A54 (mid-tier Android, 6GB RAM).
+**License:** GPL-3.0 (see [LICENSE](./LICENSE) — open source, copyleft, "my own invention" protected).
+**Build cycle:** ~1 year at 2 hours/day, solo, learning as we go. Public from day one.
 
-## The one law
+---
 
-> AI may understand the request. The kernel decides what is valid. The ledger records what became true. The evidence system records why BU believes it. The projections make it useful.
+## What BU is
 
-## Architecture
+BU is a discipline OS, not a productivity app. The central metaphor is a **fire** — not decorative, not gamified, but the literal functional state of the app. When the fire is lit, BU is sharp, present, watching with you. When the fire is dead, BU goes dark and silent. You want it back? Tend it.
+
+The product ships in **two tiers**:
+
+- **BU Lite** — plan/execute/focus/journal, no model, no Watcher. Works offline, immediately. The fire is dim (the app cannot see what you actually do).
+- **BU Full** — user opts in → app downloads Gemma 3 1B (529MB) locally → the Watcher activates (system-level awareness) → the Forge intelligence comes alive. The fire becomes honest. The Play is computed, not written. The Life Log fills automatically.
+
+Both tiers are free. Both are local. Both are private. The tier boundary is the model download — a deliberate commitment moment, not silent bloat.
+
+## The five layers
+
+| Layer | Job |
+|---|---|
+| **Flame** | UI — Jetpack Compose. The fire ring, the Play, journaling (write/voice/draw), the Life Log browser. |
+| **Ember** | State + memory — ObjectBox 4.0 with HNSW vector index. Every action is an ember. |
+| **Watcher** | Android system APIs — UsageStats, Foreground Service, Notification Listener, Accessibility (opt-in). |
+| **Forge** | On-device intelligence — Gemma 3 1B + Qwen 0.6B + RAG over embers. Computes fire state, daily Play, patterns, predictions. |
+| **Bedrock** | Three invariants: tap survives · fire honest · you own your embers. |
+
+## The current state
+
+- ✅ v6 vision locked — see [PLAN.md](./PLAN.md) and [research/v6-fire/](./research/v6-fire/)
+- ⏭️ Next: P0 Spark — initialize the Android project scaffold, build BU Lite (planning + journaling + manual fire tending, no AI).
+
+See [PROGRESS.md](./PROGRESS.md) for the running log of what's done and what's next.
+
+## Working with this repo (for humans and LLMs)
+
+This repository is designed to be read by both humans and AI assistants. If you are an LLM (Claude, GPT, Cursor, etc.) starting a session on this repo, **read these files first, in this order**:
+
+1. [MEMORY/context.md](./MEMORY/context.md) — what BU is, what you need to know
+2. [PROGRESS.md](./PROGRESS.md) — what was done, what's next
+3. [PLAN.md](./PLAN.md) — the locked v6 vision
+4. [MEMORY/decisions.md](./MEMORY/decisions.md) — architectural decisions and rationale
+5. [MEMORY/glossary.md](./MEMORY/glossary.md) — the vocabulary
+6. [MEMORY/lessons-learned.md](./MEMORY/lessons-learned.md) — what failed, what worked
+
+Then check [MEMORY/session-log.md](./MEMORY/session-log.md) for the most recent working sessions.
+
+## Repository structure
 
 ```
-:app            UI shells (LOOM: NOW·PLAN·JOURNAL·ATLAS·SHIELD), navigation, workers host
-:designsystem   tokens, motion v3 springs, haptics, Arc, Arc-Dial, Pebble   (leaf)
-:identity       BU Loop domain — pure Kotlin, zero Android imports
-:guardian       Shield domain — pure Kotlin, zero Android imports
-:core           BTK: command gateway · ledger (Room/SQLite) · events · outbox
+bu-app/
+├── README.md                    ← you are here
+├── PLAN.md                      ← the locked v6 vision
+├── PROGRESS.md                  ← running log of work done
+├── LICENSE                      ← GPL-3.0
+├── MEMORY/                      ← for any LLM reading the repo
+│   ├── context.md
+│   ├── decisions.md
+│   ├── glossary.md
+│   ├── lessons-learned.md
+│   └── session-log.md
+├── research/
+│   ├── archive/                 ← v1, v2, v3, v4 research (preserved as history)
+│   └── v6-fire/                 ← v6 vision PDF + supporting notes
+├── docs/                        ← user-facing docs
+│   ├── privacy.md               ← what the Watcher sees, what stays on device
+│   ├── architecture.md          ← the five-layer architecture, public
+│   └── changelog.md
+├── src/                         ← Android app (Kotlin + Compose)
+│   ├── app/                     ← UI shell, navigation, DI wiring
+│   ├── flame/                   ← UI layer: fire ring, the Play, journaling
+│   ├── ember/                   ← ObjectBox state + memory
+│   ├── watcher/                 ← Android APIs: UsageStats, FGS, Accessibility
+│   ├── forge/                   ← Gemma 3 1B + RAG + chooser + patterns
+│   └── bedrock/                 ← invariants, persistence, security
+├── native/                      ← JNI bridges, model hosting
+├── experiments/                 ← spike code (see experiments/README.md)
+├── assets/                      ← fire animation stages, model files (git-lfs)
+└── .github/
+    ├── workflows/               ← CI: build APK, lint, test
+    └── ISSUE_TEMPLATE/          ← bug, experiment-idea, decision-needed, learned-this
 ```
 
-- **BTK flow:** command → idempotency → validate → transactional commit (state + events + outbox) → receipt → effects applied at-least-once after commit.
-- **Single-writer ledger:** SQLite owns all truth; Markdown bodies live in the ledger; FTS/embeddings/alarms/exports are rebuildable projections.
-- **Needle 3** (P6) is an interpreter with ≤5-tool contextual menus — confidence is never authorization.
+## Founding principles
 
-## Phases (owner tests an APK after each; CI artifact on every push)
+1. **The fire is the discipline.** Not a meter, not a streak — the literal functional state of the app.
+2. **The app withholds its own value when you drift.** Free apps chase you. BU goes dark.
+3. **Everything stays on device.** No cloud, no account, no data leaves your phone. Ever.
+4. **The garden never lies.** Evidence grades (Observed / Inferred / User-confirmed / Outcome-confirmed) preserved on every claim.
+5. **You own your embers.** Full Markdown export anytime. No lock-in.
 
-| Phase | Status | Contents |
-|---|---|---|
-| **P0** Scaffolding & proof | ✅ owner-approved | 5 modules · Hilt · kernel round-trip · LOOM shell · Arc + Arc-Dial + Pebble |
-| **P1** The Loop | ✅ owner-approved | ledger schema v1 · tracks/Big Three/Blocks/Sparks · tally · capture→alarm→tally round-trip · focus · floating nav |
-| **P2** Rituals & reminders | pending owner test | Dusk Close contract · Dawn Push · auto-draft · moved-3 law · recommitment escalation · Care engine v3 |
-| P3 Memory & Atlas | pending | Markdown threads · evidence grades · FTS5 · links/graph · export |
-| P4 Guardian I | pending | UsageStats · Drift · Pull · budgets · L2 pause |
-| P5 Guardian II | pending | Slip Score · ladder 0–3 · guards · Adapter · Voice |
-| P6 Needle | pending | M0 telemetry-gate spike · extraction · embeddings · voice |
-| P7 Hardening | pending | Sunday Review · Reality Multiplier · backup/restore · perf gates |
+## License
 
-## Research library (`/research`)
-
-- `BU-v4-FINAL-PLAN-LOCKED.md` — **the constitution**
-- `BU_2_Product_Strategy_and_LOOM_Report.md` — product strategy & LOOM spec
-- `BU_3_Final_Engineering_Architecture_Research.md` — BTK engineering research
-- `BU-2.0-Research-Blueprint-OWNER-CLAUDE.md` — owner's original Claude research
-- `BU-v2-research-part5/6/7` — zero-resistance UX · deep engineering · the blend
-- `BU-v1-BUILD-GUIDE-archive.md` — v1 archive
-
-## Build
-
-```bash
-./gradlew :app:assembleDebug        # APK at app/build/outputs/apk/debug/
-./gradlew :core:testDebugUnitTest :identity:test :guardian:test
-```
-
-CI builds a debug APK on every push to `main` — download it from the run's **Artifacts**.
+GPL-3.0 — open source, copyleft. Anyone can read, learn, and contribute. No one can fork this closed-source. This protects the "never-before invention" status while keeping the project honest and open.

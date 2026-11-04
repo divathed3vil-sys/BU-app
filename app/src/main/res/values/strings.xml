@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">BU</string>
-    <string name="widget_description">Today at a glance — the Main Front and the Big Three, straight from the ledger.</string>
-    <string name="widget_empty_main">Set today\'s Big Three</string>
-</resources>

@@ -1,0 +1,14 @@
+# Git LFS for large model files and binary assets
+
+# Model files (Gemma 3 1B, Qwen 0.6B, MobileNet v3, Whisper-tiny)
+*.gguf filter=lfs diff=lfs merge=lfs -text
+*.tflite filter=lfs diff=lfs merge=lfs -text
+*.task filter=lfs diff=lfs merge=lfs -text
+
+# Binary assets (fire animation textures, etc.)
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+
+# PDFs (research docs)
+# *.pdf filter=lfs diff=lfs merge=lfs -text  # uncomment if PDFs grow large

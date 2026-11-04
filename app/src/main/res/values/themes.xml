@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.BU" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bu_background</item>
-        <item name="android:statusBarColor">@color/bu_background</item>
-        <item name="android:navigationBarColor">@color/bu_background</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-    </style>
-</resources>

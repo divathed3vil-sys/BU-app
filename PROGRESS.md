@@ -1,175 +1,59 @@
-# BU · PROGRESS
+# PROGRESS
 
-Discipline: this file is updated after every phase. English-only. Commit format `feat(scope): …`.
-
----
-
-## P2 — Rituals & reminders  ·  status: CI GREEN · APK artifact live · awaiting owner test
-
-**Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` — P2 per §13: Dusk Close contract ·
-Dawn Push · auto-draft tomorrow · carry cooldown + moved-3 rule · recommitment escalation ·
-Care engine v3.
-
-**Delivered**
-
-- **Dusk Close, the five-step contract (60–90 s by design):** Receipt (auto-filled
-  planned/landed/carried from the ledger + one-tap mood words) → Offload (one field, skippable,
-  captures straight into the kernel) → Triage (every open item gets one of the three honest
-  exits: **Tomorrow** / **Smaller** / **Let go** — commands fire the moment a decision lands) →
-  Commit (tomorrow's Big Three **auto-drafted from the triage results**, Minimum Day, If-Then
-  shield with the five obstacle classes, Shield ceiling) → Seal (one atomic `SealTomorrow`
-  command: contract + slots + mood land in a single transaction). After midnight the ritual
-  closes *yesterday* — the ledger decides, not the wall clock's vanity.
-- **Dawn Push, four beats ≤60 s:** Wins (yesterday's landed list, read from evidence, never
-  memory) → Front (the Main Front's title resolved from the ledger) → If-Then recall (the
-  shield sealed last night, shown once) → First move (optional text → today's first spark).
-  Recorded once per day — a second dawn commits as a no-op inside the kernel.
-- **The moved-3 law, enforced twice:** the kernel refuses the fourth carry
-  (`CARRY_LIMIT_REACHED`); the UI closes the carry lane at three moves — swipe-left stops
-  working, the → button disappears, and the row says "3 moves · do it, shrink it, or let it
-  go at dusk". Shrink and Kill stay open at the limit — they are the honest exits.
-- **Recommitment escalation (zero-guilt):** `RitualHealth.duskNudge` counts nights without a
-  close (GENTLE → CATCH_UP → RECOMMIT) and NOW surfaces the matching card; the word "missed"
-  appears nowhere; an empty ledger is day one, never a failure. No hidden escalation (I11) —
-  the ritual is always owner-started.
-- **Care engine v3:** six types (anchor · contextual · relational · value · deadline · habit);
-  **anchor and habit re-arm themselves** — completing one round inserts tomorrow's round and
-  re-arms the alarm in the same transaction; **Why-now lines** on every care row and every
-  care notification (the line that can never be absent); the **waiting chain** ("waiting since
-  yesterday / 3 days") surfaces calmly on items past their day; **interrupt budget**
-  (default 5/day, owner-adjustable through the kernel's whitelisted `SetSetting`) — overflow
-  lands in ONE quiet digest per day while the ledger keeps every item (budget bounds
-  interruptions, never knowledge); **exact-alarm health card** with a one-tap deep link when
-  the OS restricts exactness; per-item ✕ (cancel) on the Care list.
-- **Ledger v3 (additive):** `reminders.careType` (nullable — legacy P1 rows read as
-  contextual); hand-written `MIGRATION_2_3`; a P1 install keeps every care item (I1).
-
-**Kernel contract tests extended to P2:** the fourth carry is refused; shrink works at the
-limit (estimate lands, move recorded); kill is a soft tombstone with evidence and idempotent
-re-kill; the seal lands contract + slots + mood in one breath and a rest day (zero slots) is
-legal; if-then needs both halves; dawn records once per day and the first move becomes a
-spark; recurring care re-arms tomorrow while one-shot care does not; unknown settings keys are
-refused. `RitualHealthTest` pins the pure laws (moved-3, nudge levels, draft caps, why-now,
-waiting chain, budget decision, mood words).
-
-**Exit criteria check (locked plan §13 P2)**
-
-- [x] Dusk Close five-step contract ships end-to-end through the kernel (one command, one receipt).
-- [x] Dawn Push reads evidence, records once, seeds the first move.
-- [x] Carry cooldown + moved-3 rule + recommitment escalation live in the kernel, not the UI.
-- [x] Care v3: types, budget, digest, why-now, escalation chain, exact-alarm health.
-- [ ] **7 consecutive nights of the real loop on the owner's phone — this is the owner's part.**
-
-**Owner test checklist (download APK from the Actions run)**
-
-1. NOW → Rituals card → **Dawn Push**: win → front → shield → first move. Do it twice — the
-   second record changes nothing (the kernel refuses to double a morning).
-2. **Dusk Close**: see the auto receipt → tap a mood → offload one thought → triage an open
-   item three ways (Tomorrow / Smaller / Let go) → tomorrow's draft appears pre-filled → add
-   a Minimum Day + an If-Then shield → **Seal**. Check NOW tomorrow morning: the Front is set.
-3. **Moved-3 law**: create a task, carry it three days in a row (or tally-carry 3×) — on the
-   fourth try the swipe does nothing, the → is gone, and the row asks for a decision. At dusk,
-   Shrink it (10–45 min chips) — the smaller estimate lands in the ledger.
-4. **Care v3**: PLAN → New care item → pick **habit**, set it 2 minutes ahead → the ring names
-   its why-now → mark ✓ → a new pending item appears for tomorrow, same time, automatically.
-5. **Budget**: set 3/day → fire more than 3 care items in a day — item 4+ stays quiet, and one
-   "Care · waiting" digest appears; PLAN still lists every item.
-6. **Alarm health**: if the card says "restricted", tap Allow → return — the card turns mint.
-7. Miss a night on purpose: the next day NOW shows the gentle line; two nights, a kinder
-   stronger one. Never the word "missed".
-
-**Next phase:** P3 — Memory & Atlas (threads + Markdown-in-ledger · 3-tap check-ins ·
-evidence grades + provenance UI · FTS5 · wiki links + bounded graph · attachments · ghost
-stamps · promises · vault export/import v1 · energy tints), starts on owner approval.
+Running log of what's been done and what's next. Append-only. Newest at top.
 
 ---
 
-## P1 — The Loop (vertical slice)  ·  status: OWNER APPROVED ✓ (floating nav amendment applied)
+## 2026-11-04 · v6 vision locked, repo restructured
 
-**Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
+### Done
+- Killed v5 garden concept (was a skin, not a soul).
+- Synthesized v6 "The Fire" concept from owner's research + 6 design questions.
+- Wrote v6 vision document (28-page PDF, `research/v6-fire/BU_v6_The_Fire.pdf`).
+- Restructured GitHub repo: wiped v4 code (preserved in git history), archived v1-v4 research to `research/archive/`, built new v6 structure (README, PLAN, PROGRESS, MEMORY/, docs/, src/ modules, .github/).
+- Added GPL-3.0 LICENSE.
+- Added `.gitignore` for Android/Kotlin.
+- Added `.github/workflows/ci.yml` placeholder (will configure when Android project initializes).
+- Added `.github/ISSUE_TEMPLATE/` (bug, experiment-idea, decision-needed, learned-this).
+- Wrote `docs/privacy.md` v1 (the founding contract on what the Watcher sees).
+- Wrote `docs/architecture.md` v1 (the five-layer architecture, public).
 
-**Owner decision folded in first:** the LOOM nav is now a **floating pill** — detached from the
-screen edges, lifted by a soft shadow, content glides beneath it (Pebble, snackbar and every
-tab's scroll clearance re-tuned around it).
+### Decisions locked
+- License: GPL-3.0 (open source, copyleft, protects "my own invention" status).
+- Two-tier product: Lite (no AI) + Full (opt-in model download).
+- Architecture: 5 layers (Flame / Ember / Watcher / Forge / Bedrock).
+- Build order: P0 Spark (4 weeks, BU Lite) → P1 Ember (6 weeks, BU Full opt-in) → P2 Flame (8 weeks, intervention) → P3 Forge (12 weeks, smart context + Gorgeous) → P4 Constellation (ongoing).
+- Aesthetic: quiet luxury + Apple + Material 3 + fire (warm cream, deep ink, deep amber accent, procedural fire animation).
+- Model stack: Gemma 3 1B (529MB int4) as router + Qwen 0.6B for JSON tools + Gemini Nano as fast path if present + ObjectBox 4.0 HNSW for memory.
 
-**Delivered**
+### Next
+- **P0 Spark — initialize the Android project scaffold.** This will happen on the owner's local machine (Galaxy A54 dev environment). Next session will plan P0 in detail: gradle modules, Compose setup, ObjectBox integration, the fire ring UI (static state, no growth yet), the manual Play (you write it), the blank-page journal, the manual Life Log.
+- Owner to revoke GitHub PAT after this push (single-use pattern).
 
-- **Ledger schema v2 (all core P1 tables):** objects · object_revisions · relationships · tracks ·
-  tasks · day_contracts · carry_ledger · reminders · focus_sessions · evidence_events · settings ·
-  momentum_cache · notification_log. Additive hand-written `MIGRATION_1_2` — a P0 install keeps
-  every capture (I1), and capture rows gain their promotion link.
-- **BTK grew the P1 command vocabulary:** capture → interpret/promote · tracks CRUD · tasks
-  (BIG/BLOCK/SPARK) · TallyTask (DONE/PARTIAL/CARRIED) · SetBigThree (≤3, exactly one Main
-  Front, enforced in Validators) · care reminders (create/complete/snooze/cancel) · monotonic
-  focus (start/end, reboot ⇒ INTERRUPTED_OR_UNKNOWN, never invented) · day window · onboarded.
-  Every branch: validate → one transaction (state + events + outbox) → receipt → effects.
-- **Universal capture, two clocks (§5.5):** SaveCapture commits instantly; the outbox runs the
-  deterministic interpreter (`:core/interpret`) — relative times, clock times, tonight/tomorrow/
-  weekday anchors, intent-prefix stripping, honest ambiguity (unresolvable time ⇒ timeless task,
-  raw text never rewritten). Verdicts re-enter the kernel as commands; sparks that look like
-  tasks become SPARK tasks with a `derived_from` relationship.
-- **Care round-trip complete:** CreateReminder → outbox `SCHEDULE_REMINDER_ALARM` →
-  AndroidReminderScheduler (exact where the OS allows, honest 10-min window where it does not,
-  honesty written back to `alarmExact`) → CareReceiver marks DUE + logs delivery + posts the
-  notification → owner tallies in PLAN. Cancel/snooze re-arm idempotently. BootReceiver re-arms
-  from SQLite after a reboot; startup reconcile marks past-due honestly.
-- **The NOW widget:** home-screen projection (Main Front ▲, Big Three with ✓/◐/○ glyphs,
-  captures count) rebuilt from the ledger by the WIDGET_DIRTY outbox effect — never a second truth.
-- **NOW tab is the live cockpit:** real Day Arc (window from settings, elapsed vs landed progress) ·
-  Momentum headline (7-day rolling ratio from `momentum_cache`) · Big Three with **Tally Trio**
-  (swipe right = Done · swipe left = Carry with cooling-grey intent · buttons for the accessible
-  path; carried N× counts shown without shame) · Blocks strip + Arc-Dial block placement with
-  overlap refusal surfaced kindly · Sparks with direct capture + tally · Focus card (15/25/45/open,
-  live monotonic elapsed, Completed/End-early) · kernel pulse.
-- **PLAN tab:** Tracks CRUD (create/edit/archive; estimates are guesses BU will learn to correct)
-  + Care list (exact/inexact honesty chips, Done ✓, +10 m snooze).
-- **Onboarding, one decision per screen:** Begin → day window on two Arc-Dials (4 h floor,
-  enforced twice) → notification permission (ask once, explain, never block on a no) → ledger
-  marks onboarded. MainActivity gates on the ledger, splash-quiet while it reads.
-- **Kernel contract tests extended to P1 commands** (tally + evidence + momentum recount, carry
-  cooldown row + moved count, Big Three replacement + validator refusals, block overlap refusal,
-  care alarm enqueue, snooze math, focus exclusivity + honest end) alongside the P0 suite.
-
-**Exit criteria check (locked plan §13 P1)**
-
-- [x] Full loop on device: capture → interpret → plan (Big Three/blocks) → do (focus) → tally
-      — all through the kernel, all receipted.
-- [x] Process-death boundaries: captures, tasks, tallies, reminders, focus state all live in the
-      ledger; alarms re-arm on boot; outbox drains on start.
-- [x] NOW widget ships as a rebuildable projection.
-
-**Owner test checklist (download APK from the Actions run)**
-
-1. First launch: onboarding — drag the two Arc-Dials, set your day, decide on notifications.
-2. Tap the Pebble → type "call amma tomorrow at 6pm" → capture → watch NOW: a spark appears,
-   then becomes a task scheduled for tomorrow (the deterministic parser, no AI).
-3. NOW → "Set" on Big Three → three lines, mark the front → Commit. Swipe one right (Done —
-   mint), one left (Carry — cooling grey, "carried 1×" appears), use ◐ on one.
-4. "Add" a block on the Arc-Dial → try overlapping a second one on the same time — BU refuses,
-   kindly. Try 25/45/60/90 durations.
-5. PLAN → create a track; create a Care reminder for ~2 minutes ahead → wait for the
-   notification → tally it ✓ in PLAN. The row shows "exact" or "inexact window" honestly.
-6. Start a 25-min focus, watch the live timer, end it early — it records honestly.
-7. Add the "BU · NOW" widget to your home screen; tally something in-app and watch it repaint.
-8. Kill the app, reopen — everything you did is still there. Reboot the phone — reminders
-   survive.
-
-**Next phase:** P2 — Rituals & reminders (Dusk Close, Dawn Push, carry cooldown + moved-3 rule,
-Care engine v3), starts on owner approval.
+### Open questions (to resolve during P0 planning)
+- Android Studio version + Kotlin plugin version pin.
+- ObjectBox vs Room for the Ember layer (ObjectBox recommended for HNSW, but Room is more familiar — decision needed).
+- Compose Multiplatform vs pure Jetpack Compose (recommendation: pure Compose for v1, KMP later if desktop reader becomes real).
+- Min SDK (recommendation: 29 / Android 10 — covers Galaxy A54, drops <5% of users).
+- Whether to ship a web prototype first to validate UX, or go straight to Android (recommendation: straight to Android — web can't simulate the Watcher meaningfully).
 
 ---
 
-## P0 — Scaffolding & proof  ·  2026-11-04  ·  status: APPROVED by owner
+## Historical context (preserved for reference)
 
-**Locked plan:** `research/BU-v4-FINAL-PLAN-LOCKED.md` (supersedes all prior plans).
+### v4 era (2026-11-02, killed 2026-11-04)
+- 5-tab LOOM IA, BTK 5-plane kernel, 12 invariants, 30-table schema, 8-phase plan.
+- Real Kotlin/Compose code shipped (~70 files across app/core/designsystem/guardian/identity modules).
+- Reached P2 (rituals & reminders) before being killed.
+- Killed because: enterprise architecture for one student, vocabulary of a knowledge worker, garden was a skin, complexity prevented shipping.
+- All v4 code wiped from working tree. Preserved in git history (commit `9e8d116` and ancestors). Recoverable if needed.
 
-**Delivered**
+### v5 era (2026-11-03, killed 2026-11-04)
+- "The Living Bloom" — garden metaphor, 5 petals (Bloom/Garden/Soil/Keeper/Voice).
+- Web prototype built (Next.js, ~12 components). Worked end-to-end.
+- Killed because: garden was a skin not a soul, no discipline pressure, not unique enough.
+- Web prototype code wiped from local sandbox (not pushed to repo).
 
-- 5 Gradle modules per the dependency law (`:app :core :designsystem :identity :guardian`), Kotlin 2.0.21 / AGP 8.7.3 / Compose BOM 2024.10.01 / Hilt 2.52 / Room 2.6.1, minSdk 29 · target 35.
-- **BTK skeleton in `:core`:** `CommandGateway` (submit/approve/reject/undo) · durable `command_inbox` · append-only `domain_events` · transactional `outbox` · `capture_inbox` · idempotency-key retry safety · pure validators · injectable clock · Room-backed stores with a `TransactionRunner` seam for JVM tests.
-- **Kernel contract tests (6, JVM):** atomic commit (capture+event+outbox in one transaction), idempotent retry (I5), rejection with audit, undo-as-compensation (I10), unknown-command refusal, approval-contract stub. Plus Big Three rules tests and Shield ladder ceiling tests (I11).
-- **Design system v3:** near-black/gray/mint tokens · dark-native theme · four named springs (`snappy/bouncy/screen/soft`) · haptic grammar (`tick/grab/win/guard`) · `BuDayArc` Canvas · **`BuArcDial`** (the slider replacement: 15-min snap, haptic ticks, value bubble, ±5 m accessible steppers) · **`BuPebble`** (draggable, magnetic edge-dock, position remembered, drag never fires capture — owner's lively-+ requirement) · `BuCard` + instructive `BuEmptyState`.
-- **LOOM shell:** 5 tabs (NOW · PLAN · JOURNAL · ATLAS · SHIELD) as a swipe pager with a leading spring indicator; capture sheet submits through the kernel and shows the receipt; NOW shows a live kernel pulse (captures today + queued async work) reading real ledger flows; PLAN hosts an interactive Arc-Dial demo; every future screen states its phase honestly.
-- CI: assembleDebug + kernel/domain unit tests + lint → debug APK artifact on every push.
-
-**Result:** owner tested on device — approved. One change request carried into P1: floating nav.
+### v6 era (2026-11-04, current)
+- "The Fire" — discipline-first, two-tier (Lite/Full), system-level Watcher, on-device Forge.
+- Vision doc locked. Repo restructured. P0 Spark about to begin.

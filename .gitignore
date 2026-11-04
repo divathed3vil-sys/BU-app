@@ -1,26 +1,61 @@
+# Android / Kotlin / Gradle
+*.apk
+*.aab
+*.dex
+*.class
+
+# Kotlin compiler
+.kotlin/
+
 # Gradle
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+local.properties
 
-# IDE
+# Android Studio / IntelliJ
 .idea/
 *.iml
-*.ipr
 *.iws
-.vscode/
-
-# Android
-local.properties
+*.ipr
 captures/
 .externalNativeBuild/
 .cxx/
 
-# Kotlin
-.kotlin/
-
-# OS
+# macOS
 .DS_Store
-Thumbs.db
+
+# Logs
+*.log
+dev.log
+server.log
+
+# Sandbox artifacts (not part of the project)
+tool-results/
+.bu-repo-work/
+
+# Sensitive (never commit)
+*.keystore
+*.jks
+secrets.properties
+google-services.json
+**/google-services.json
+
+# Large model files (use git-lfs)
+*.gguf
+*.tflite
+*.task
+*.bin
+!gradle/wrapper/gradle-wrapper.jar
+
+# Photo proof embeddings (these are user data, not source)
+**/embeddings/*.bin
+
+# ObjectBox database files (user data, not source)
+**/objectbox/*.mdb
+**/datastore/
+
+# Backup files
+*.bak
+*.backup
+*~

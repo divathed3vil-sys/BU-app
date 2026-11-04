@@ -1,41 +1,53 @@
-name: BU CI
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
   build:
-    name: assembleDebug · test · lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Gradle setup + cache
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools-version: '35.0.0'
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+      # NOTE: The Android project is not yet initialized (P0 Spark pending).
+      # When it is, uncomment the build steps below.
 
-      - name: Unit tests (kernel + pure domain)
-        run: ./gradlew :core:testDebugUnitTest :identity:test :guardian:test --stacktrace
+      # - name: Grant execute permission for gradlew
+      #   run: chmod +x gradlew
 
-      - name: Lint
-        run: ./gradlew :app:lintDebug --stacktrace
+      # - name: Run unit tests
+      #   run: ./gradlew testDebugUnitTest
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: BU-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+      # - name: Run lint
+      #   run: ./gradlew lintDebug
+
+      # - name: Build debug APK
+      #   run: ./gradlew assembleDebug
+
+      # - name: Upload debug APK
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: bu-debug-apk
+      #     path: app/build/outputs/apk/debug/*.apk
+      #     retention-days: 30
+
+      - name: Placeholder (Android project not yet initialized)
+        run: echo "P0 Spark not yet started. CI will activate when the Android project is initialized."
